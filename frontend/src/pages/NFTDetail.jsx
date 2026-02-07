@@ -68,6 +68,12 @@ export default function NFTDetail() {
       navigate('/wallet');
       return;
     }
+    const balance = parseFloat(wallet.balance || 0);
+    const price = parseFloat(nft?.list_price_xrp || 0);
+    if (balance < price) {
+      toast({ type: 'error', title: 'Insufficient Balance', message: `You need ${price} XRP but only have ${balance.toFixed(2)} XRP` });
+      return;
+    }
     setBuying(true);
     try {
       const { data } = await api.purchaseNFT(id, wallet.address, wallet.seed);
