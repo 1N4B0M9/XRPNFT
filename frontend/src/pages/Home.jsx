@@ -1,24 +1,24 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import { Zap, Shield, TrendingUp, Briefcase } from 'lucide-react';
+import { Music, Palette, Gamepad2, ArrowRightLeft } from 'lucide-react';
 
 const HERO_IMAGES = [
-  'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?w=400&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1557683316-973673baf926?w=400&h=300&fit=crop',
-  'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?w=400&h=500&fit=crop',
-  'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=400&h=300&fit=crop',
-  'https://images.unsplash.com/photo-1617791160505-6f00504e3519?w=400&h=500&fit=crop',
-  'https://images.unsplash.com/photo-1572635196237-14b3f281503f?w=400&h=300&fit=crop',
-  'https://images.unsplash.com/photo-1618556450994-a6a128ef0d9d?w=400&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1508873699372-7aeab60b44ab?w=400&h=300&fit=crop',
-  'https://images.unsplash.com/photo-1541701494587-cb58502866ab?w=400&h=300&fit=crop',
-  'https://images.unsplash.com/photo-1509114397022-ed747cca3f65?w=400&h=500&fit=crop',
-  'https://images.unsplash.com/photo-1611605698335-8b1569810432?w=400&h=600&fit=crop',
-  'https://images.unsplash.com/photo-1566288623386-8f3f43b94aab?w=400&h=300&fit=crop',
-  'https://images.unsplash.com/photo-1573867639040-6dd25fa5f597?w=400&h=500&fit=crop',
-  'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=400&h=700&fit=crop',
-  'https://images.unsplash.com/photo-1470071459604-3b5ec3a7fe05?w=400&h=300&fit=crop',
-  'https://images.unsplash.com/photo-1622547748225-3fc4abd2cca0?w=400&h=500&fit=crop',
+  '/s1.jpg',
+  '/s2.jpg',
+  '/s3.jpg',
+  '/s4.jpg',
+  '/s5.jpg',
+  '/s6.webp',
+  '/s7.jpg',
+  '/s8.jpg',
+  '/s9.webp',
+  '/s10.jpg',
+  '/s11.jpg',
+  '/s12.jpg',
+  '/s13.jpg',
+  '/s14.jpg',
+  '/s15.jpg',
+  '/s16.jpg',
 ];
 
 const IMAGE_POSITIONS = [
@@ -44,43 +44,43 @@ const IMAGE_POSITIONS = [
 const SLIDES = [
   {
     isHero: true,
-    dotColor: 'bg-white',
+    dotColor: 'bg-primary-300',
   },
   {
-    icon: Shield,
-    title: 'On-Chain Value',
-    desc: 'Every price change, every transaction, permanently recorded on the XRP Ledger. Full transparency with an immutable history you can trust.',
-    accentColor: 'rgb(96, 165, 250)',
-    iconGradient: 'from-blue-500 to-blue-700',
-    dotColor: 'bg-blue-400',
+    icon: Music,
+    title: 'Revenue Shares',
+    desc: 'Musicians and creators can sell shares of their revenue streams — songs, content, royalties. Fans invest directly in the work they love and earn as it grows.',
+    accentColor: '#ffc2ca',
+    iconGradient: 'from-primary-400 to-primary-600',
+    dotColor: 'bg-primary-300',
   },
   {
-    icon: Zap,
-    title: 'XRPL Speed',
-    desc: 'Transactions settle in 3-5 seconds. No waiting, no congestion, no excessive gas fees. Just instant, reliable transfers on the XRP Ledger.',
-    accentColor: 'rgb(251, 191, 36)',
-    iconGradient: 'from-amber-500 to-amber-700',
-    dotColor: 'bg-amber-400',
+    icon: Gamepad2,
+    title: 'Digital Goods',
+    desc: 'Game skins, virtual items, in-app assets — put them on the blockchain and let them live beyond any single platform. Owned by users, traded freely.',
+    accentColor: '#ffc2ca',
+    iconGradient: 'from-primary-400 to-primary-600',
+    dotColor: 'bg-primary-300',
   },
   {
-    icon: TrendingUp,
-    title: 'Royalty Pools',
-    desc: 'Creators set up royalty pools and distribute income directly to NFT holders. Transparent, on-chain revenue sharing with no middlemen.',
-    accentColor: 'rgb(74, 222, 128)',
-    iconGradient: 'from-green-500 to-green-700',
-    dotColor: 'bg-green-400',
+    icon: Palette,
+    title: 'Art & Collectibles',
+    desc: 'Artists list original work backed by XRP on-chain. Provable ownership, transparent pricing, and a global marketplace with no gatekeepers.',
+    accentColor: '#ffc2ca',
+    iconGradient: 'from-primary-400 to-primary-600',
+    dotColor: 'bg-primary-300',
   },
   {
-    icon: Briefcase,
-    title: 'Free Market',
-    desc: 'Buy at market price, relist at whatever price you choose. A truly open marketplace where supply and demand set the value.',
-    accentColor: 'rgb(192, 132, 252)',
-    iconGradient: 'from-purple-500 to-purple-700',
-    dotColor: 'bg-purple-400',
+    icon: ArrowRightLeft,
+    title: 'Open Trading',
+    desc: 'Every asset lives on the XRP Ledger. Buy, sell, and trade outside the original system — a truly open secondary market where you set the price.',
+    accentColor: '#ffc2ca',
+    iconGradient: 'from-primary-400 to-primary-600',
+    dotColor: 'bg-primary-300',
   },
   {
     isCta: true,
-    dotColor: 'bg-primary-400',
+    dotColor: 'bg-primary-300',
   },
 ];
 
@@ -259,20 +259,20 @@ export default function Home() {
           >
             {slide.isHero ? (
               <>
-                <h1 className="text-white font-light tracking-[-3px] leading-[1.1] mb-8"
+                <h1 className="text-white font-bold tracking-[-3px] leading-[1.1] mb-8"
                     style={{ fontSize: 'clamp(2.5rem, 10vw, 96px)' }}>
-                  Transparent
+                  Make
                   <br />
-                  Decentralized
+                  Anything
                   <br />
-                  Immutable
+                  Valuable
                 </h1>
-                <p className="text-xl text-white/60 mb-12 font-light">
-                  The next generation of distributed ledger infrastructure.
+                <p className="text-xl text-white/60 mb-12 font-light max-w-xl">
+                  Turn any digital creation into a real asset — backed by XRP, traded on an open market.
                 </p>
                 <Link
                   to="/marketplace"
-                  className="relative overflow-hidden bg-gradient-to-br from-white/95 to-gray-200/95 text-black px-12 py-4 rounded-[28px] text-base font-semibold border border-white/30 backdrop-blur-lg tracking-wide hover:scale-105 hover:shadow-[0_10px_40px_rgba(255,255,255,0.15)] transition-all"
+                  className="relative overflow-hidden bg-primary-300 text-black px-12 py-4 rounded-[28px] text-base font-semibold border border-primary-200/30 backdrop-blur-lg tracking-wide hover:scale-105 hover:bg-primary-200 hover:shadow-[0_10px_40px_rgba(255,173,184,0.25)] transition-all"
                 >
                   Shop Now
                 </Link>
@@ -280,10 +280,10 @@ export default function Home() {
             ) : slide.isCta ? (
               <>
                 <h2 className="text-4xl md:text-6xl font-bold mb-4 text-white tracking-tight">
-                  Ready to start?
+                  Your asset. Your market.
                 </h2>
                 <p className="text-lg text-surface-400 mb-12 max-w-lg font-light">
-                  Create, collect, and trade digital assets on the XRP Ledger.
+                  Tokenize what you create, back it with XRP, and let the world decide what it's worth.
                 </p>
                 <div className="flex flex-wrap items-center justify-center gap-4">
                   <Link to="/dashboard" className="px-8 py-3 bg-primary-600 hover:bg-primary-500 rounded-xl font-semibold transition-all text-white">

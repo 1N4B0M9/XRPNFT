@@ -38,17 +38,17 @@ export default function Layout({ children }) {
 
   return (
     <div className="min-h-screen flex flex-col">
-      {/* Header - XChange style */}
-      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-10 py-3 bg-black/30 backdrop-blur-[20px] border-b border-white/8">
+      {/* Header - BackedX */}
+      <header className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-4 sm:px-10 py-3 bg-black/30 backdrop-blur-[20px] border-b border-primary-400/10">
         {/* Logo */}
-        <Link to="/" className="text-white text-lg font-medium tracking-wide shrink-0">
-          XChange
+        <Link to="/" className="text-primary-200 text-2xl font-bold tracking-[-1px] shrink-0">
+          BackedX
         </Link>
 
-        {/* Center search bar - hidden on mobile */}
+        {/* Center search bar */}
         <form
           onSubmit={handleSearch}
-          className="hidden md:flex flex-1 items-center max-w-[500px] mx-4 lg:mx-6 bg-white/8 rounded-[20px] pl-4 pr-4 py-2.5 border border-white/10"
+          className="flex flex-1 items-center max-w-[500px] mx-4 lg:mx-6 bg-white/8 rounded-[20px] pl-4 pr-4 py-2.5 border border-white/10"
         >
           <Search className="w-[18px] h-[18px] text-white/90 shrink-0" strokeWidth={2} />
           <input
@@ -60,29 +60,48 @@ export default function Layout({ children }) {
           />
         </form>
 
-        {/* Right - nav icons + wallet */}
-        <div className="flex items-center gap-2 shrink-0">
-          <nav className="hidden md:flex items-center gap-2">
-            {navItems.map(({ path, label, icon: Icon }) => {
-              const isActive = location.pathname === path;
-              return (
-                <Link
-                  key={path}
-                  to={path}
-                  title={label}
-                  className={`w-11 h-11 rounded-xl flex items-center justify-center transition-opacity hover:opacity-70 focus:outline-none focus:ring-0 ${
-                    isActive ? 'text-white' : 'text-white/90'
-                  }`}
-                >
-                  <Icon className="w-[22px] h-[22px]" strokeWidth={2} />
-                </Link>
-              );
-            })}
-          </nav>
-          {/* Wallet status */}
-          <div className="flex items-center gap-2 ml-1 border-l border-white/10 pl-2">
-            {wallet ? (
-              <>
+        {/* Right side */}
+        <div className="flex items-center shrink-0">
+          {wallet ? (
+            <>
+              {/* Nav icons - only shown when logged in */}
+              <nav className="hidden md:flex items-center gap-2 mr-2">
+                {navItems.map(({ path, label, icon: Icon }) => {
+                  const isActive = location.pathname === path;
+                  return (
+                    <Link
+                      key={path}
+                      to={path}
+                      title={label}
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center transition-opacity hover:opacity-70 focus:outline-none focus:ring-0 ${
+                        isActive ? 'text-white' : 'text-white/90'
+                      }`}
+                    >
+                      <Icon className="w-[22px] h-[22px]" strokeWidth={2} />
+                    </Link>
+                  );
+                })}
+              </nav>
+              {/* Mobile nav icons */}
+              <nav className="md:hidden flex items-center gap-1 mr-2">
+                {navItems.map(({ path, label, icon: Icon }) => {
+                  const isActive = location.pathname === path;
+                  return (
+                    <Link
+                      key={path}
+                      to={path}
+                      title={label}
+                      className={`w-11 h-11 rounded-xl flex items-center justify-center transition-opacity ${
+                        isActive ? 'text-white' : 'text-white/80'
+                      }`}
+                    >
+                      <Icon className="w-[22px] h-[22px]" strokeWidth={2} />
+                    </Link>
+                  );
+                })}
+              </nav>
+              {/* Wallet info */}
+              <div className="flex items-center gap-2 border-l border-white/10 pl-2">
                 <div className="hidden sm:block text-right">
                   <p className="text-[10px] text-white/50">Balance</p>
                   <p className="text-xs font-semibold text-white">
@@ -99,53 +118,17 @@ export default function Layout({ children }) {
                 >
                   <LogOut className="w-4 h-4" strokeWidth={2} />
                 </button>
-              </>
-            ) : (
-              <Link
-                to="/wallet"
-                className="px-3 py-2 bg-white/15 hover:bg-white/25 rounded-xl text-xs font-medium text-white transition-colors"
-              >
-                Connect Wallet
-              </Link>
-            )}
-          </div>
-        </div>
-
-        {/* Mobile: icons only (no search, wallet at end) */}
-        <nav className="md:hidden flex items-center gap-1">
-          {navItems.map(({ path, label, icon: Icon }) => {
-            const isActive = location.pathname === path;
-            return (
-              <Link
-                key={path}
-                to={path}
-                title={label}
-                className={`w-11 h-11 rounded-xl flex items-center justify-center transition-opacity ${
-                  isActive ? 'text-white' : 'text-white/80'
-                }`}
-              >
-                <Icon className="w-[22px] h-[22px]" strokeWidth={2} />
-              </Link>
-            );
-          })}
-          {wallet ? (
-            <button
-              onClick={logout}
-              className="w-11 h-11 rounded-xl flex items-center justify-center text-white/80"
-              title="Disconnect"
-            >
-              <LogOut className="w-[22px] h-[22px]" strokeWidth={2} />
-            </button>
+              </div>
+            </>
           ) : (
             <Link
               to="/wallet"
-              className="w-11 h-11 rounded-xl flex items-center justify-center text-white/80"
-              title="Connect Wallet"
+              className="px-4 py-2 bg-primary-300/15 hover:bg-primary-300/25 rounded-xl text-sm font-medium text-primary-200 transition-colors"
             >
-              <CreditCard className="w-[22px] h-[22px]" strokeWidth={2} />
+              Connect Wallet
             </Link>
           )}
-        </nav>
+        </div>
       </header>
 
       {/* Spacer for fixed header */}
@@ -161,7 +144,7 @@ export default function Layout({ children }) {
       {/* Footer (hidden on homepage) */}
       {!isHome(location.pathname) && (
         <footer className="border-t border-surface-800 py-6 text-center text-surface-600 text-xs">
-          <p>Digital Asset Tartan &mdash; Built on XRPL Testnet &mdash; Hackathon 2026</p>
+          <p>BackedX &mdash; Built on XRPL Testnet &mdash; Hackathon 2026</p>
         </footer>
       )}
     </div>

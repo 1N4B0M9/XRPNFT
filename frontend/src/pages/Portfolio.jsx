@@ -16,7 +16,7 @@ import StatusBadge from '../components/StatusBadge';
 import ExplorerLink from '../components/ExplorerLink';
 
 export default function Portfolio() {
-  const { wallet } = useWallet();
+  const { wallet, refreshBalance } = useWallet();
   const navigate = useNavigate();
 
   const [portfolio, setPortfolio] = useState(null);
@@ -26,8 +26,12 @@ export default function Portfolio() {
   const [activeTab, setActiveTab] = useState('nfts');
 
   useEffect(() => {
-    if (wallet?.address) loadPortfolio();
-    else setLoading(false);
+    if (wallet?.address) {
+      loadPortfolio();
+      refreshBalance();
+    } else {
+      setLoading(false);
+    }
   }, [wallet?.address]);
 
   const loadPortfolio = async () => {

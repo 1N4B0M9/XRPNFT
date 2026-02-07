@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef } from 'react';
 import * as api from '../services/api';
 
 const WalletContext = createContext(null);
@@ -8,6 +8,7 @@ export function WalletProvider({ children }) {
     const saved = localStorage.getItem('dat_wallet');
     return saved ? JSON.parse(saved) : null;
   });
+  const walletRef = useRef(wallet);
   const [company, setCompanyState] = useState(() => {
     const saved = localStorage.getItem('dat_company');
     return saved ? JSON.parse(saved) : null;
@@ -48,15 +49,36 @@ export function WalletProvider({ children }) {
     }
   }, []);
 
+  // Keep walletRef in sync so refreshBalance always reads latest wallet
+  useEffect(() => {
+    walletRef.current = wallet;
+  }, [wallet]);
+
   const refreshBalance = useCallback(async () => {
-    if (!wallet?.address) return;
+    const current = walletRef.current;
+    if (!current?.address) return;
     try {
-      const { data } = await api.getBalance(wallet.address);
-      saveWallet({ ...wallet, balance: data.balance });
+      const { data } = await api.getBalance(current.address);
+      const updated = { ...current, balance: data.balance };
+      setWallet(updated);
+      localStorage.setItem('dat_wallet', JSON.stringify(updated));
     } catch (err) {
       console.error('Failed to refresh balance:', err);
     }
-  }, [wallet]);
+  }, []);
+
+  // Auto-refresh balance on mount (when restoring from localStorage) and on window focus
+  useEffect(() => {
+    if (!wallet?.address) return;
+
+    // Refresh immediately on mount
+    refreshBalance();
+
+    // Refresh when user returns to the tab
+    const handleFocus = () => refreshBalance();
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, [wallet?.address]); // only re-run if the address itself changes
 
   const logout = useCallback(() => {
     saveWallet(null);

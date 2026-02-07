@@ -24,7 +24,7 @@ import NFTVisual from '../components/NFTVisual';
 export default function NFTDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { wallet } = useWallet();
+  const { wallet, refreshBalance } = useWallet();
   const { toast } = useToast();
 
   const [nft, setNft] = useState(null);
@@ -69,6 +69,7 @@ export default function NFTDetail() {
       const { data } = await api.purchaseNFT(id, wallet.address, wallet.seed);
       toast({ type: 'success', title: 'Purchase Successful!', message: `TX: ${data.txHash?.slice(0, 12)}...` });
       loadNFT();
+      refreshBalance();
     } catch (err) {
       toast({ type: 'error', title: 'Purchase Failed', message: err.response?.data?.error || 'Purchase failed' });
     } finally {
@@ -88,6 +89,7 @@ export default function NFTDetail() {
       setShowRelistForm(false);
       setRelistPrice('');
       loadNFT();
+      refreshBalance();
     } catch (err) {
       toast({ type: 'error', title: 'Relist Failed', message: err.response?.data?.error || 'Relist failed' });
     } finally {
