@@ -267,20 +267,23 @@ export default function Dashboard() {
 
   if (!wallet) {
     return (
-      <div className="text-center py-16 animate-fade-in">
-        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-600 to-accent-600 flex items-center justify-center mx-auto mb-6">
-          <Zap className="w-10 h-10 text-white" />
+      <div className="relative text-center py-20 animate-fade-in overflow-hidden rounded-2xl border border-surface-800 bg-surface-900/80">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+        <div className="relative">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-600 to-accent-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary-600/20">
+            <Zap className="w-10 h-10 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Creator Dashboard</h2>
+          <p className="text-surface-400 mb-6 max-w-md mx-auto">
+            Connect a wallet to start minting NFTs on XRPL and creating royalty pools
+          </p>
+          <button
+            onClick={() => navigate('/wallet')}
+            className="px-8 py-3.5 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-500 hover:to-accent-500 rounded-xl font-semibold transition-all active:scale-[0.98] shadow-lg shadow-primary-600/20"
+          >
+            Connect Wallet
+          </button>
         </div>
-        <h2 className="text-2xl font-bold mb-2">Creator Dashboard</h2>
-        <p className="text-surface-400 mb-6 max-w-md mx-auto">
-          Connect a wallet to start minting NFTs on XRPL and creating royalty pools
-        </p>
-        <button
-          onClick={() => navigate('/wallet')}
-          className="px-8 py-3 bg-primary-600 hover:bg-primary-500 rounded-xl font-semibold transition-colors active:scale-[0.98]"
-        >
-          Connect Wallet
-        </button>
       </div>
     );
   }
@@ -309,23 +312,25 @@ export default function Dashboard() {
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Wallet Balance', value: `${parseFloat(balance || wallet.balance || 0).toFixed(1)} XRP`, icon: Coins, color: 'text-blue-400' },
-          { label: 'NFTs Created', value: myNFTs.length, icon: Package, color: 'text-purple-400' },
-          { label: 'Listed', value: myNFTs.filter((n) => n.status === 'listed').length, icon: ChevronRight, color: 'text-amber-400' },
-          { label: 'Royalty Pools', value: royaltyPools.length, icon: Music, color: 'text-green-400' },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-surface-900 border border-surface-800 rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Icon className={`w-4 h-4 ${color}`} />
-              <span className="text-xs text-surface-500 uppercase tracking-wider">{label}</span>
+          { label: 'Wallet Balance', value: `${parseFloat(balance || wallet.balance || 0).toFixed(1)} XRP`, icon: Coins, color: 'text-blue-400', iconBg: 'bg-blue-500/15', border: 'border-blue-800/40' },
+          { label: 'NFTs Created', value: myNFTs.length, icon: Package, color: 'text-purple-400', iconBg: 'bg-purple-500/15', border: 'border-purple-800/40' },
+          { label: 'Listed', value: myNFTs.filter((n) => n.status === 'listed').length, icon: ChevronRight, color: 'text-amber-400', iconBg: 'bg-amber-500/15', border: 'border-amber-800/40' },
+          { label: 'Royalty Pools', value: royaltyPools.length, icon: Music, color: 'text-green-400', iconBg: 'bg-green-500/15', border: 'border-green-800/40' },
+        ].map(({ label, value, icon: Icon, color, iconBg, border }) => (
+          <div key={label} className={`bg-surface-900 border ${border} rounded-lg p-5 transition-colors hover:bg-surface-900/90`}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center`}>
+                <Icon className={`w-5 h-5 ${color}`} />
+              </div>
+              <span className="text-xs text-surface-500 uppercase tracking-wider font-medium">{label}</span>
             </div>
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
+            <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
           </div>
         ))}
       </div>
 
       {/* Step Indicator */}
-      <div className="bg-surface-900 border border-surface-800 rounded-2xl p-5">
+      <div className="bg-surface-900 border border-surface-700 rounded-lg p-5">
         <StepIndicator
           steps={WIZARD_STEPS}
           currentStep={currentStep}
@@ -337,8 +342,10 @@ export default function Dashboard() {
       {currentStep === 0 && (
         <div className="grid lg:grid-cols-3 gap-6">
           {/* Form (2 cols) */}
-          <div className="lg:col-span-2 bg-surface-900 border border-surface-800 rounded-2xl p-6 sm:p-8">
+          <div className="lg:col-span-2 bg-surface-900 border border-surface-800 rounded-lg overflow-hidden border-t-4 border-t-primary-500/60">
+            <div className="p-6 sm:p-8">
             <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
+              <span className="w-1 h-6 rounded-full bg-primary-500" />
               <Plus className="w-5 h-5 text-primary-400" />
               Mint New NFTs
             </h2>
@@ -607,13 +614,14 @@ export default function Dashboard() {
                 )}
               </button>
             </div>
+            </div>
           </div>
 
           {/* Live Preview (1 col) */}
           <div className="lg:col-span-1">
             <div className="sticky top-24">
               <p className="text-xs text-surface-500 uppercase tracking-wider font-semibold mb-3">Live Preview</p>
-              <div className="bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden">
+              <div className="bg-surface-900 border border-surface-800 rounded-lg overflow-hidden">
                 <div className="aspect-square relative">
                   <NFTVisual nft={previewNFT} size="card" />
                 </div>
@@ -655,8 +663,10 @@ export default function Dashboard() {
 
       {/* ── Step 1: Royalty Pools ────────────────────────────────────── */}
       {currentStep === 1 && (
-        <div className="bg-surface-900 border border-surface-800 rounded-2xl p-6 sm:p-8">
+        <div className="bg-surface-900 border border-surface-800 rounded-lg overflow-hidden border-t-4 border-t-purple-500/60">
+          <div className="p-6 sm:p-8">
           <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
+            <span className="w-1 h-6 rounded-full bg-purple-500" />
             <Music className="w-5 h-5 text-purple-400" />
             Create Royalty Pool
           </h2>
@@ -785,13 +795,16 @@ export default function Dashboard() {
               ))}
             </div>
           )}
+          </div>
         </div>
       )}
 
       {/* ── Step 2: Distribute Income ───────────────────────────────── */}
       {currentStep === 2 && (
-        <div className="bg-surface-900 border border-surface-800 rounded-2xl p-6 sm:p-8">
+        <div className="bg-surface-900 border border-surface-800 rounded-lg overflow-hidden border-t-4 border-t-green-500/60">
+          <div className="p-6 sm:p-8">
           <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
+            <span className="w-1 h-6 rounded-full bg-green-500" />
             <Send className="w-5 h-5 text-green-400" />
             Distribute Royalty Income
           </h2>
@@ -913,13 +926,17 @@ export default function Dashboard() {
               )}
             </div>
           )}
+          </div>
         </div>
       )}
 
       {/* My NFTs */}
       {myNFTs.length > 0 && (
-        <div>
-          <h2 className="text-xl font-bold mb-4">Your NFTs ({myNFTs.length})</h2>
+        <div className="pt-2">
+          <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
+            <span className="w-1 h-5 rounded-full bg-primary-500/80" />
+            Your NFTs ({myNFTs.length})
+          </h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
             {myNFTs.map((nft) => (
               <NFTCard key={nft.id} nft={{ ...nft, creator_name: 'You' }} />

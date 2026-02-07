@@ -54,16 +54,21 @@ export default function Portfolio() {
 
   if (!wallet) {
     return (
-      <div className="text-center py-16 animate-fade-in">
-        <Briefcase className="w-16 h-16 text-surface-600 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Your Portfolio</h2>
-        <p className="text-surface-400 mb-6">Connect a wallet to view your NFT holdings and history</p>
-        <button
-          onClick={() => navigate('/wallet')}
-          className="px-6 py-3 bg-primary-600 hover:bg-primary-500 rounded-xl font-semibold transition-colors"
-        >
-          Connect Wallet
-        </button>
+      <div className="relative text-center py-20 animate-fade-in overflow-hidden rounded-2xl border border-surface-800 bg-surface-900/80">
+        <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none" />
+        <div className="relative">
+          <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-600 to-accent-600 flex items-center justify-center mx-auto mb-6 shadow-lg shadow-primary-600/20">
+            <Briefcase className="w-10 h-10 text-white" />
+          </div>
+          <h2 className="text-2xl font-bold mb-2">Your Portfolio</h2>
+          <p className="text-surface-400 mb-6">Connect a wallet to view your NFT holdings and history</p>
+          <button
+            onClick={() => navigate('/wallet')}
+            className="px-8 py-3.5 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-500 hover:to-accent-500 rounded-xl font-semibold transition-all active:scale-[0.98] shadow-lg shadow-primary-600/20"
+          >
+            Connect Wallet
+          </button>
+        </div>
       </div>
     );
   }
@@ -94,51 +99,34 @@ export default function Portfolio() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          {
-            label: 'XRP Balance',
-            value: `${parseFloat(portfolio?.xrpBalance || 0).toFixed(2)} XRP`,
-            icon: Wallet,
-            color: 'text-blue-400',
-          },
-          {
-            label: 'NFTs Held',
-            value: portfolio?.stats?.totalNFTs || 0,
-            icon: Briefcase,
-            color: 'text-purple-400',
-          },
-          {
-            label: 'Portfolio Value',
-            value: `${(portfolio?.stats?.totalPortfolioValue || 0).toFixed(1)} XRP`,
-            icon: TrendingUp,
-            color: 'text-green-400',
-          },
-          {
-            label: 'Royalty Earnings',
-            value: `${(royaltyEarnings.totalEarnings || 0).toFixed(2)} XRP`,
-            icon: DollarSign,
-            color: 'text-amber-400',
-          },
-        ].map(({ label, value, icon: Icon, color }) => (
-          <div key={label} className="bg-surface-900 border border-surface-800 rounded-2xl p-5">
-            <div className="flex items-center gap-2 mb-2">
-              <Icon className={`w-4 h-4 ${color}`} />
-              <span className="text-xs text-surface-500 uppercase tracking-wider">{label}</span>
+          { label: 'XRP Balance', value: `${parseFloat(portfolio?.xrpBalance || 0).toFixed(2)} XRP`, icon: Wallet, color: 'text-blue-400', iconBg: 'bg-blue-500/15', border: 'border-blue-800/40' },
+          { label: 'NFTs Held', value: portfolio?.stats?.totalNFTs || 0, icon: Briefcase, color: 'text-purple-400', iconBg: 'bg-purple-500/15', border: 'border-purple-800/40' },
+          { label: 'Portfolio Value', value: `${(portfolio?.stats?.totalPortfolioValue || 0).toFixed(1)} XRP`, icon: TrendingUp, color: 'text-green-400', iconBg: 'bg-green-500/15', border: 'border-green-800/40' },
+          { label: 'Royalty Earnings', value: `${(royaltyEarnings.totalEarnings || 0).toFixed(2)} XRP`, icon: DollarSign, color: 'text-amber-400', iconBg: 'bg-amber-500/15', border: 'border-amber-800/40' },
+        ].map(({ label, value, icon: Icon, color, iconBg, border }) => (
+          <div key={label} className={`bg-surface-900 border ${border} rounded-lg p-5 transition-colors hover:bg-surface-900/90`}>
+            <div className="flex items-center gap-3 mb-3">
+              <div className={`w-10 h-10 rounded-lg ${iconBg} flex items-center justify-center`}>
+                <Icon className={`w-5 h-5 ${color}`} />
+              </div>
+              <span className="text-xs text-surface-500 uppercase tracking-wider font-medium">{label}</span>
             </div>
-            <p className={`text-2xl font-bold ${color}`}>{value}</p>
+            <p className={`text-2xl font-bold tabular-nums ${color}`}>{value}</p>
           </div>
         ))}
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-2 border-b border-surface-800">
+      <div className="bg-surface-900 border border-surface-700 rounded-lg p-1 flex gap-1 w-fit">
         {['nfts', 'transactions', 'royalty earnings'].map((tab) => (
           <button
             key={tab}
+            type="button"
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize border-b-2 transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium capitalize rounded-md transition-colors ${
               activeTab === tab
-                ? 'border-primary-500 text-primary-400'
-                : 'border-transparent text-surface-500 hover:text-white'
+                ? 'bg-primary-600/20 text-primary-400 border border-primary-500/40'
+                : 'text-surface-500 hover:text-white hover:bg-surface-800'
             }`}
           >
             {tab}
@@ -148,32 +136,44 @@ export default function Portfolio() {
 
       {/* Tab Content */}
       {activeTab === 'nfts' && (
-        <div>
-          {portfolio?.nfts?.length > 0 ? (
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {portfolio.nfts.map((nft) => (
-                <NFTCard key={nft.id} nft={nft} showRelist />
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-12">
-              <Coins className="w-12 h-12 text-surface-700 mx-auto mb-3" />
-              <p className="text-surface-400">No NFTs in your portfolio</p>
-              <button
-                onClick={() => navigate('/marketplace')}
-                className="mt-3 text-primary-400 hover:underline text-sm"
-              >
-                Browse Marketplace
-              </button>
-            </div>
-          )}
+        <div className="bg-surface-900 border border-surface-800 rounded-lg overflow-hidden border-t-4 border-t-primary-500/60">
+          <div className="p-6">
+            <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+              <span className="w-1 h-5 rounded-full bg-primary-500" />
+              Your NFTs
+            </h2>
+            {portfolio?.nfts?.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                {portfolio.nfts.map((nft) => (
+                  <NFTCard key={nft.id} nft={nft} showRelist />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-12 rounded-lg bg-surface-800/30 border border-surface-700/50">
+                <Coins className="w-12 h-12 text-surface-600 mx-auto mb-3" />
+                <p className="text-surface-400">No NFTs in your portfolio</p>
+                <button
+                  type="button"
+                  onClick={() => navigate('/marketplace')}
+                  className="mt-3 text-primary-400 hover:underline text-sm"
+                >
+                  Browse Marketplace
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {activeTab === 'transactions' && (
-        <div>
-          {transactions.length > 0 ? (
-            <div className="bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden">
+        <div className="bg-surface-900 border border-surface-800 rounded-lg overflow-hidden border-t-4 border-t-blue-500/60">
+          <div className="p-6">
+            <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+              <span className="w-1 h-5 rounded-full bg-blue-500" />
+              Transaction History
+            </h2>
+            {transactions.length > 0 ? (
+              <div className="rounded-lg overflow-hidden border border-surface-700">
               <table className="w-full">
                 <thead>
                   <tr className="border-b border-surface-800">
@@ -204,19 +204,27 @@ export default function Portfolio() {
                   ))}
                 </tbody>
               </table>
-            </div>
-          ) : (
-            <p className="text-center py-12 text-surface-500">No transactions yet</p>
-          )}
+              </div>
+            ) : (
+              <div className="text-center py-12 rounded-lg bg-surface-800/30 border border-surface-700/50">
+                <p className="text-surface-500">No transactions yet</p>
+              </div>
+            )}
+          </div>
         </div>
       )}
 
       {activeTab === 'royalty earnings' && (
-        <div>
-          {royaltyEarnings.earnings.length > 0 ? (
+        <div className="bg-surface-900 border border-surface-800 rounded-lg overflow-hidden border-t-4 border-t-amber-500/60">
+          <div className="p-6">
+            <h2 className="text-lg font-bold flex items-center gap-2 mb-4">
+              <span className="w-1 h-5 rounded-full bg-amber-500" />
+              Royalty Earnings
+            </h2>
+            {royaltyEarnings.earnings.length > 0 ? (
             <div className="space-y-3">
               {royaltyEarnings.earnings.map((e) => (
-                <div key={e.id} className="bg-surface-900 border border-surface-800 rounded-xl p-4 flex items-center justify-between">
+                <div key={e.id} className="bg-surface-800/50 border border-surface-700 rounded-lg p-4 flex items-center justify-between hover:bg-surface-800/70 transition-colors">
                   <div>
                     <p className="font-medium">{e.asset_name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -235,15 +243,16 @@ export default function Portfolio() {
                 </div>
               ))}
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <DollarSign className="w-12 h-12 text-surface-700 mx-auto mb-3" />
+            ) : (
+            <div className="text-center py-12 rounded-lg bg-surface-800/30 border border-surface-700/50">
+              <DollarSign className="w-12 h-12 text-surface-600 mx-auto mb-3" />
               <p className="text-surface-400">No royalty earnings yet</p>
               <p className="text-surface-500 text-sm mt-2">
                 Buy royalty NFTs to earn income when creators distribute royalties
               </p>
             </div>
-          )}
+            )}
+          </div>
         </div>
       )}
     </div>
