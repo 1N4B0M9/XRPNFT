@@ -208,11 +208,54 @@ router.post('/:id/buy', async (req, res) => {
       );
     }
 
+    // ── Transfer escrow so backing XRP follows the NFT to the new owner ──
+    let newEscrowResult = null;
+    const backingAmount = parseFloat(nft.backing_xrp || 0);
+
+    if (backingAmount > 0 && nft.escrow_sequence && nft.escrow_owner) {
+      // Look up seller's seed to re-create the escrow
+      const sellerUser = await pool.query(
+        'SELECT wallet_seed FROM users WHERE wallet_address = $1',
+        [sellerAddress]
+      );
+      const sellerSeed = sellerUser.rows[0]?.wallet_seed;
+
+      if (sellerSeed) {
+        // 1. Finish the old escrow (XRP goes back to old destination / seller)
+        try {
+          await xrplService.finishEscrow(sellerSeed, nft.escrow_owner, nft.escrow_sequence);
+        } catch (escrowErr) {
+          console.warn('[Buy] Escrow finish failed (may already be released):', escrowErr.message);
+        }
+
+        // 2. Create new escrow from seller → destination is buyer
+        //    Seller funds it with the backing XRP that was just released to them
+        try {
+          newEscrowResult = await xrplService.createEscrow(
+            sellerSeed,
+            backingAmount,
+            buyerWalletAddress // destination is the new owner
+          );
+        } catch (escrowErr) {
+          console.warn('[Buy] New escrow creation failed:', escrowErr.message);
+        }
+      }
+    }
+
     // Record the sale in local DB (for transaction history)
     await pool.query(
       `UPDATE nfts SET owner_address = $1, last_sale_price_xrp = $2,
-       sale_count = $3, updated_at = datetime('now') WHERE id = $4`,
-      [buyerWalletAddress, nft.list_price_xrp, saleNumber, nftId]
+       sale_count = $3, escrow_sequence = $4, escrow_owner = $5,
+       escrow_tx_hash = $6, updated_at = datetime('now') WHERE id = $7`,
+      [
+        buyerWalletAddress,
+        nft.list_price_xrp,
+        saleNumber,
+        newEscrowResult?.sequence || nft.escrow_sequence,
+        newEscrowResult ? sellerAddress : nft.escrow_owner,
+        newEscrowResult?.txHash || nft.escrow_tx_hash,
+        nftId,
+      ]
     );
 
     // Record transaction (from=buyer who paid, to=seller who received)
@@ -221,6 +264,15 @@ router.post('/:id/buy', async (req, res) => {
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
       [nftId, 'purchase', buyerWalletAddress, sellerAddress, nft.list_price_xrp, purchaseTx.txHash, 'confirmed']
     );
+
+    // Record escrow transfer transaction if applicable
+    if (newEscrowResult) {
+      await pool.query(
+        `INSERT INTO transactions (nft_id, tx_type, from_address, to_address, amount_xrp, tx_hash, status)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [nftId, 'escrow_transfer', sellerAddress, buyerWalletAddress, backingAmount, newEscrowResult.txHash, 'confirmed']
+      );
+    }
 
     // Update or create user record
     await pool.query(
