@@ -1,28 +1,85 @@
-import dotenv from 'dotenv';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import crypto from 'crypto';
 
-dotenv.config();
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const UPLOADS_DIR = path.join(__dirname, '..', '..', 'uploads');
 
-// For the hackathon, we simulate IPFS/Pinata by storing metadata as
-// data URIs / mock IPFS hashes. If Pinata keys are configured, we
-// can use the real API.
+// Ensure uploads directory exists
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
 
-const PINATA_API_KEY = process.env.PINATA_API_KEY;
-const PINATA_SECRET_KEY = process.env.PINATA_SECRET_KEY;
+// Read env vars at call time (not import time) so dotenv has loaded first
+function hasPinata() {
+  const key = process.env.PINATA_API_KEY;
+  const secret = process.env.PINATA_SECRET_KEY;
+  return (
+    key &&
+    secret &&
+    !key.startsWith('your_') &&
+    !secret.startsWith('your_')
+  );
+}
+
+/**
+ * Pin a file (Buffer) to IPFS via Pinata, or save locally as fallback.
+ * Returns a URL string (ipfs:// or /uploads/...).
+ */
+export async function pinFile(fileBuffer, fileName) {
+  if (hasPinata()) {
+    try {
+      const FormData = (await import('form-data')).default;
+      const formData = new FormData();
+      formData.append('file', fileBuffer, { filename: fileName });
+      formData.append(
+        'pinataMetadata',
+        JSON.stringify({ name: fileName })
+      );
+
+      const response = await fetch('https://api.pinata.cloud/pinning/pinFileToIPFS', {
+        method: 'POST',
+        headers: {
+          pinata_api_key: process.env.PINATA_API_KEY,
+          pinata_secret_api_key: process.env.PINATA_SECRET_KEY,
+          ...formData.getHeaders(),
+        },
+        body: formData,
+      });
+
+      const data = await response.json();
+      if (data.IpfsHash) {
+        console.log(`[Pinata] Pinned file: ipfs://${data.IpfsHash}`);
+        return `ipfs://${data.IpfsHash}`;
+      }
+    } catch (err) {
+      console.warn('Pinata file upload failed, falling back to local:', err.message);
+    }
+  }
+
+  // Fallback: save to local uploads directory
+  const ext = path.extname(fileName) || '.bin';
+  const uniqueName = `${crypto.randomUUID()}${ext}`;
+  const filePath = path.join(UPLOADS_DIR, uniqueName);
+  fs.writeFileSync(filePath, fileBuffer);
+  console.log(`[Local] Saved file: /uploads/${uniqueName}`);
+  return `/uploads/${uniqueName}`;
+}
 
 /**
  * Pin JSON metadata to IPFS (or simulate it).
  * Returns a URI string suitable for NFT metadata.
  */
 export async function pinMetadata(metadata) {
-  // If Pinata keys are available, use the real API
-  if (PINATA_API_KEY && PINATA_SECRET_KEY) {
+  if (hasPinata()) {
     try {
       const response = await fetch('https://api.pinata.cloud/pinning/pinJSONToIPFS', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          pinata_api_key: PINATA_API_KEY,
-          pinata_secret_api_key: PINATA_SECRET_KEY,
+          pinata_api_key: process.env.PINATA_API_KEY,
+          pinata_secret_api_key: process.env.PINATA_SECRET_KEY,
         },
         body: JSON.stringify({
           pinataContent: metadata,
@@ -47,9 +104,21 @@ export async function pinMetadata(metadata) {
 }
 
 /**
- * Build standard NFT metadata object.
+ * Build standard NFT metadata object with content and properties support.
  */
-export function buildNFTMetadata({ name, description, image, assetType, backingXrp, creatorName, royaltyPoolName, royaltyPercentage }) {
+export function buildNFTMetadata({
+  name,
+  description,
+  image,
+  imageUrl,
+  assetType,
+  backingXrp,
+  creatorName,
+  royaltyPoolName,
+  royaltyPercentage,
+  properties,
+  contentMimeType,
+}) {
   const attributes = [
     { trait_type: 'Asset Type', value: assetType },
     { trait_type: 'Creator', value: creatorName },
@@ -67,11 +136,29 @@ export function buildNFTMetadata({ name, description, image, assetType, backingX
     attributes.push({ trait_type: 'Royalty Percentage', value: `${royaltyPercentage}%` });
   }
 
-  return {
+  // Use uploaded image URL if available, otherwise fallback
+  const resolvedImage = imageUrl || image || 'https://placehold.co/400x400/1a1a2e/e94560?text=DAT+NFT';
+
+  const metadata = {
     name,
     description,
-    image: image || 'https://placehold.co/400x400/1a1a2e/e94560?text=DAT+NFT',
+    image: resolvedImage,
     external_url: 'https://digitalassettartan.io',
     attributes,
   };
+
+  // Add structured properties for game integration
+  if (properties && Object.keys(properties).length > 0) {
+    metadata.properties = properties;
+  }
+
+  // Add content info if a file was uploaded
+  if (imageUrl) {
+    metadata.content = {
+      mime_type: contentMimeType || 'application/octet-stream',
+      url: imageUrl,
+    };
+  }
+
+  return metadata;
 }

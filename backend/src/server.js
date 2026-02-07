@@ -1,6 +1,9 @@
+import './env.js'; // load .env before anything else
+
 import express from 'express';
 import cors from 'cors';
-import dotenv from 'dotenv';
+import path from 'path';
+import { fileURLToPath } from 'url';
 
 import creatorRoutes from './routes/creator.js';
 import marketplaceRoutes from './routes/marketplace.js';
@@ -8,8 +11,7 @@ import holderRoutes from './routes/holder.js';
 import walletRoutes from './routes/wallet.js';
 import royaltyRoutes from './routes/royalty.js';
 
-dotenv.config();
-
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const PORT = process.env.PORT || 3001;
 
@@ -19,6 +21,9 @@ app.use(cors({
   credentials: true,
 }));
 app.use(express.json({ limit: '10mb' }));
+
+// Serve uploaded files statically (fallback when Pinata is not configured)
+app.use('/uploads', express.static(path.join(__dirname, '..', 'uploads')));
 
 // Routes
 app.use('/api/creator', creatorRoutes);

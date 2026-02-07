@@ -41,6 +41,7 @@ CREATE TABLE IF NOT EXISTS nfts (
   asset_description TEXT,
   asset_image_url TEXT,
   metadata_uri TEXT,
+  properties TEXT DEFAULT '{}',
   backing_xrp REAL NOT NULL DEFAULT 0,
   list_price_xrp REAL,
   last_sale_price_xrp REAL DEFAULT 0,
@@ -102,9 +103,24 @@ CREATE INDEX IF NOT EXISTS idx_royalty_payouts_pool ON royalty_payouts(pool_id);
 CREATE INDEX IF NOT EXISTS idx_royalty_payouts_holder ON royalty_payouts(holder_address);
 `;
 
+// Migration: add new columns to existing tables (safe to re-run)
+const migrations = [
+  "ALTER TABLE nfts ADD COLUMN properties TEXT DEFAULT '{}'",
+];
+
 try {
   console.log('Initializing SQLite database...');
   db.exec(schema);
+
+  // Run migrations (ignore errors from already-existing columns)
+  for (const migration of migrations) {
+    try {
+      db.exec(migration);
+    } catch {
+      // Column likely already exists — safe to ignore
+    }
+  }
+
   console.log('Database initialized successfully at:', dbPath);
 } catch (err) {
   console.error('Error initializing database:', err);

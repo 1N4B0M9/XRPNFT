@@ -16,6 +16,9 @@ import {
   Diamond,
   Sparkles,
   Info,
+  Upload,
+  X,
+  Settings2,
 } from 'lucide-react';
 import * as api from '../services/api';
 import { useToast } from '../components/Toast';
@@ -54,6 +57,13 @@ export default function Dashboard() {
     listPriceXrp: '50',
     quantity: 1,
   });
+
+  // File upload
+  const [mintFile, setMintFile] = useState(null);
+  const [mintFilePreview, setMintFilePreview] = useState(null);
+
+  // Properties (key-value pairs for game integration)
+  const [mintProperties, setMintProperties] = useState([{ key: '', value: '' }]);
 
   // Royalty pool form
   const [royaltyForm, setRoyaltyForm] = useState({
@@ -115,54 +125,77 @@ export default function Dashboard() {
     setMintErrors(errors);
     return Object.keys(errors).length === 0;
   };
-
-  const handleMint = async () => {
-    if (!validateMint()) return;
-    setMinting(true);
-    try {
-      const { data } = await api.mintNFTs({
-        walletAddress: wallet.address,
-        assetName: mintForm.assetName,
-        assetDescription: mintForm.assetDescription || 'Digital asset NFT',
-        assetType: mintForm.assetType,
-        listPriceXrp: parseFloat(mintForm.listPriceXrp),
-        quantity: mintForm.quantity,
-      });
-      toast({ type: 'success', title: 'NFTs Minted!', message: data.message });
-      setMintForm({ assetName: '', assetDescription: '', assetType: 'digital_asset', listPriceXrp: '50', quantity: 1 });
-      loadCreatorData();
-      refreshBalance();
-    } catch (err) {
-      toast({ type: 'error', title: 'Minting Failed', message: err.response?.data?.error || 'Minting failed' });
-    } finally {
-      setMinting(false);
+  const handleFileChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setMintFile(file);
+    // Generate preview for images
+    if (file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (ev) => setMintFilePreview(ev.target.result);
+      reader.readAsDataURL(file);
+    } else {
+      setMintFilePreview(null);
     }
   };
 
-  const handleCreateRoyaltyPool = async () => {
-    if (!royaltyForm.name.trim()) {
-      toast({ type: 'error', message: 'Pool name is required' });
-      return;
-    }
-    setCreatingPool(true);
-    try {
-      const { data } = await api.createRoyaltyPool({
-        walletAddress: wallet.address,
-        name: royaltyForm.name.trim(),
-        description: royaltyForm.description.trim(),
-        totalNfts: parseInt(royaltyForm.totalNfts),
-        royaltyPerNft: parseFloat(royaltyForm.royaltyPerNft),
-        listPriceXrp: parseFloat(royaltyForm.listPriceXrp),
-      });
-      toast({ type: 'success', title: 'Royalty Pool Created!', message: data.message });
-      loadCreatorData();
-      refreshBalance();
-    } catch (err) {
-      toast({ type: 'error', title: 'Pool Creation Failed', message: err.response?.data?.error || 'Failed to create royalty pool' });
-    } finally {
-      setCreatingPool(false);
-    }
+  const clearFile = () => {
+    setMintFile(null);
+    setMintFilePreview(null);
   };
+
+  const addProperty = () => {
+    setMintProperties([...mintProperties, { key: '', value: '' }]);
+  };
+
+  const removeProperty = (idx) => {
+    setMintProperties(mintProperties.filter((_, i) => i !== idx));
+  };
+
+  const updateProperty = (idx, field, val) => {
+    const updated = [...mintProperties];
+    updated[idx] = { ...updated[idx], [field]: val };
+    setMintProperties(updated);
+  };
+
+ const handleMint = async () => {
+  if (!validateMint()) return;  // from ui-changes
+  setMinting(true);
+  try {
+    // Build properties (from main)
+    const propsObj = {};
+    for (const { key, value } of mintProperties) {
+      if (key.trim()) propsObj[key.trim()] = value.trim();
+    }
+
+    // Use FormData to support file uploads (from main)
+    const formData = new FormData();
+    formData.append('walletAddress', wallet.address);
+    formData.append('assetName', mintForm.assetName);
+    formData.append('assetDescription', mintForm.assetDescription || 'Digital asset NFT');
+    formData.append('assetType', mintForm.assetType);
+    formData.append('listPriceXrp', mintForm.listPriceXrp);
+    formData.append('quantity', mintForm.quantity);
+    if (Object.keys(propsObj).length > 0) {
+      formData.append('properties', JSON.stringify(propsObj));
+    }
+    if (mintFile) {
+      formData.append('file', mintFile);
+    }
+
+    const { data } = await api.mintNFTs(formData);
+    toast({ type: 'success', title: 'NFTs Minted!', message: data.message });  // ui-changes toast
+    setMintForm({ assetName: '', assetDescription: '', assetType: 'digital_asset', listPriceXrp: '50', quantity: 1 });
+    clearFile();                              // from main
+    setMintProperties([{ key: '', value: '' }]); // from main
+    loadCreatorData();
+    refreshBalance();
+  } catch (err) {
+    toast({ type: 'error', title: 'Minting Failed', message: err.response?.data?.error || 'Minting failed' });
+  } finally {
+    setMinting(false);
+  }
+};
 
   const handleDistribute = async () => {
     if (!distributePoolId || !distributeAmount) {
@@ -395,6 +428,88 @@ export default function Dashboard() {
                   )}
                 </div>
               </div>
+            {/* ── File Upload ── */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium mb-2">
+                <Upload className="w-4 h-4 inline mr-1" />
+                Upload Content (image, 3D model, texture, etc.)
+              </label>
+              {!mintFile ? (
+                <label className="flex flex-col items-center justify-center w-full h-36 border-2 border-dashed border-surface-700 rounded-xl cursor-pointer hover:border-primary-500 transition-colors bg-surface-800/50">
+                  <Upload className="w-8 h-8 text-surface-500 mb-2" />
+                  <span className="text-sm text-surface-400">Click or drag to upload</span>
+                  <span className="text-xs text-surface-600 mt-1">PNG, JPG, WEBP, GLB, MP3, etc. (max 25 MB)</span>
+                  <input
+                    type="file"
+                    className="hidden"
+                    accept="image/*,.glb,.gltf,.fbx,.obj,.mp3,.wav,.mp4"
+                    onChange={handleFileChange}
+                  />
+                </label>
+              ) : (
+                <div className="flex items-center gap-4 bg-surface-800 rounded-xl p-4">
+                  {mintFilePreview ? (
+                    <img src={mintFilePreview} alt="preview" className="w-20 h-20 object-cover rounded-lg" />
+                  ) : (
+                    <div className="w-20 h-20 bg-surface-700 rounded-lg flex items-center justify-center">
+                      <Package className="w-8 h-8 text-surface-500" />
+                    </div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate">{mintFile.name}</p>
+                    <p className="text-xs text-surface-500">{(mintFile.size / 1024).toFixed(1)} KB</p>
+                  </div>
+                  <button onClick={clearFile} className="p-1.5 text-surface-500 hover:text-red-400 transition-colors">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )}
+            </div>
+
+            {/* ── Properties (Game Integration) ── */}
+            <div className="sm:col-span-2">
+              <label className="block text-sm font-medium mb-2">
+                <Settings2 className="w-4 h-4 inline mr-1" />
+                Properties (for game/app integration)
+              </label>
+              <p className="text-xs text-surface-500 mb-3">
+                Add key-value pairs that games can read from the blockchain (e.g., skin_id = warrior_gold)
+              </p>
+              <div className="space-y-2">
+                {mintProperties.map((prop, idx) => (
+                  <div key={idx} className="flex gap-2">
+                    <input
+                      type="text"
+                      value={prop.key}
+                      onChange={(e) => updateProperty(idx, 'key', e.target.value)}
+                      placeholder="Key (e.g., skin_id)"
+                      className="flex-1 bg-surface-800 border border-surface-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    <input
+                      type="text"
+                      value={prop.value}
+                      onChange={(e) => updateProperty(idx, 'value', e.target.value)}
+                      placeholder="Value (e.g., warrior_gold)"
+                      className="flex-1 bg-surface-800 border border-surface-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    />
+                    {mintProperties.length > 1 && (
+                      <button
+                        onClick={() => removeProperty(idx)}
+                        className="p-2 text-surface-500 hover:text-red-400 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <button
+                  onClick={addProperty}
+                  className="text-xs text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1 mt-1"
+                >
+                  <Plus className="w-3 h-3" /> Add Property
+                </button>
+              </div>
+            </div>
 
               {/* Mint Button */}
               <button

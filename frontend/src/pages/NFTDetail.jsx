@@ -9,6 +9,9 @@ import {
   Tag,
   Repeat,
   DollarSign,
+  Settings2,
+  ExternalLink,
+  FileText,
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import * as api from '../services/api';
@@ -111,6 +114,23 @@ export default function NFTDetail() {
   const isRoyaltyNFT = !!nft.royalty_pool_id;
   const creatorLabel = nft.creator_name || (nft.creator_address ? `${nft.creator_address.slice(0, 10)}...${nft.creator_address.slice(-4)}` : 'Unknown');
 
+  // Resolve image URL
+  const resolveUrl = (url) => {
+    if (!url) return null;
+    if (url.startsWith('ipfs://')) return `https://gateway.pinata.cloud/ipfs/${url.replace('ipfs://', '')}`;
+    if (url.startsWith('/uploads/')) return `http://localhost:3001${url}`;
+    return url;
+  };
+  const imageUrl = resolveUrl(nft.asset_image_url);
+  const hasImage = !!imageUrl;
+
+  // Parse properties
+  let nftProperties = {};
+  try {
+    nftProperties = nft.properties ? (typeof nft.properties === 'string' ? JSON.parse(nft.properties) : nft.properties) : {};
+  } catch { nftProperties = {}; }
+  const hasProperties = Object.keys(nftProperties).length > 0;
+
   // Format price history for chart
   const chartData = priceHistory
     .filter((p) => p.price != null)
@@ -133,8 +153,12 @@ export default function NFTDetail() {
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Left: Image / Visual */}
         <div className="bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden">
-          <div className="aspect-square relative">
-            <NFTVisual nft={nft} size="detail" />
+                 <div className="aspect-square relative">
+            {hasImage ? (
+              <img src={imageUrl} alt={nft.asset_name} className="absolute inset-0 w-full h-full object-cover" />
+            ) : (
+              <NFTVisual nft={nft} size="detail" />
+            )}
 
             {/* Value Badge */}
             <div className="absolute bottom-4 left-4 right-4 bg-surface-900/90 backdrop-blur-md rounded-xl p-4 flex items-center justify-between z-20">
@@ -230,6 +254,54 @@ export default function NFTDetail() {
                 {isOwner ? 'You Own This NFT' : 'Current Owner'}
               </p>
               <ExplorerLink type="account" value={nft.owner_address} truncate={false} />
+            </div>
+          )}
+
+          {/* Game Properties */}
+          {hasProperties && (
+            <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
+              <p className="text-xs text-surface-500 uppercase tracking-wider mb-3 font-semibold flex items-center gap-1.5">
+                <Settings2 className="w-3.5 h-3.5" />
+                Game / App Properties
+              </p>
+              <div className="space-y-2">
+                {Object.entries(nftProperties).map(([key, value]) => (
+                  <div key={key} className="flex items-center justify-between bg-surface-800/60 rounded-lg px-3 py-2">
+                    <span className="text-sm text-surface-400 font-mono">{key}</span>
+                    <span className="text-sm font-medium text-white">{String(value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Content / IPFS Link */}
+          {nft.asset_image_url && (
+            <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
+              <p className="text-xs text-surface-500 uppercase tracking-wider mb-2 font-semibold flex items-center gap-1.5">
+                <FileText className="w-3.5 h-3.5" />
+                NFT Content
+              </p>
+              <a
+                href={imageUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1.5 break-all"
+              >
+                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
+                {nft.asset_image_url.startsWith('ipfs://') ? nft.asset_image_url : 'View Content File'}
+              </a>
+              {nft.metadata_uri && (
+                <a
+                  href={resolveUrl(nft.metadata_uri)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-surface-500 hover:text-surface-300 transition-colors flex items-center gap-1.5 mt-2 break-all"
+                >
+                  <ExternalLink className="w-3 h-3 shrink-0" />
+                  Metadata: {nft.metadata_uri.startsWith('ipfs://') ? nft.metadata_uri : 'View Metadata'}
+                </a>
+              )}
             </div>
           )}
 

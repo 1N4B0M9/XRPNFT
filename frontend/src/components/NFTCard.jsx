@@ -1,18 +1,38 @@
 import { Link } from 'react-router-dom';
 import NFTVisual from './NFTVisual';
 
+// Resolve image URL: handle ipfs:// links, local /uploads/ paths, and full URLs
+function resolveImageUrl(url) {
+  if (!url) return null;
+  if (url.startsWith('ipfs://')) {
+    const hash = url.replace('ipfs://', '');
+    return `https://gateway.pinata.cloud/ipfs/${hash}`;
+  }
+  if (url.startsWith('/uploads/')) {
+    // Local fallback — served from backend
+    return `http://localhost:3001${url}`;
+  }
+  return url;
+}
+
 export default function NFTCard({ nft }) {
   const isRoyalty = !!nft.royalty_pool_id || nft.asset_type === 'royalty';
   const displayValue = nft.last_sale_price_xrp > 0 ? nft.last_sale_price_xrp : nft.list_price_xrp;
+  const imageUrl = resolveImageUrl(nft.asset_image_url);
+  const hasImage = !!imageUrl;
 
   return (
     <Link
       to={`/nft/${nft.id}`}
       className="group block bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden hover:border-primary-600/50 transition-all duration-200 hover:shadow-lg hover:shadow-primary-600/10 hover:scale-[1.02]"
     >
-      {/* Generative Visual */}
-      <div className="aspect-square relative overflow-hidden">
-        <NFTVisual nft={nft} size="card" />
+{/* Image or Generative Visual */}
+<div className="aspect-square relative overflow-hidden">
+  {hasImage ? (
+    <img src={imageUrl} alt={nft.asset_name} className="absolute inset-0 w-full h-full object-cover" />
+  ) : (
+    <NFTVisual nft={nft} size="card" />
+  )}
 
         {/* Status Badge */}
         <div className="absolute top-3 left-3 flex items-center gap-1 z-20">

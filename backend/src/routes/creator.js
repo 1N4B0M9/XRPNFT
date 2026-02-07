@@ -1,19 +1,43 @@
 import { Router } from 'express';
+import multer from 'multer';
 import pool from '../db/pool.js';
 import * as xrplService from '../services/xrpl.js';
 import * as ipfsService from '../services/ipfs.js';
 
 const router = Router();
 
+// Multer configured for memory storage (buffer available for IPFS upload)
+const upload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 25 * 1024 * 1024 }, // 25 MB max
+});
+
 // ─── Mint NFTs ──────────────────────────────────────────────────
-router.post('/mint', async (req, res) => {
+router.post('/mint', upload.single('file'), async (req, res) => {
   try {
     const { walletAddress, assetName, assetDescription, assetType, listPriceXrp, quantity } = req.body;
-    const qty = quantity || 1;
+    const qty = parseInt(quantity) || 1;
     const listPrice = parseFloat(listPriceXrp) || 50;
 
     if (!walletAddress) {
       return res.status(400).json({ error: 'Wallet address is required' });
+    }
+
+    // Parse properties from JSON string (sent via FormData)
+    let properties = {};
+    if (req.body.properties) {
+      try {
+        properties = JSON.parse(req.body.properties);
+      } catch {
+        return res.status(400).json({ error: 'Invalid properties JSON' });
+      }
+    }
+
+    // Validate: at least one of file or properties must be provided
+    const hasFile = !!req.file;
+    const hasProperties = Object.keys(properties).length > 0;
+    if (!hasFile && !hasProperties) {
+      return res.status(400).json({ error: 'Please upload a file and/or add properties to the NFT' });
     }
 
     // Look up user's seed from the users table
@@ -27,17 +51,27 @@ router.post('/mint', async (req, res) => {
     const userSeed = userResult.rows[0].wallet_seed;
     const displayName = userResult.rows[0].display_name || walletAddress.slice(0, 8);
 
+    // Upload file to IPFS/local if provided
+    let contentUrl = null;
+    let contentMimeType = null;
+    if (hasFile) {
+      contentUrl = await ipfsService.pinFile(req.file.buffer, req.file.originalname);
+      contentMimeType = req.file.mimetype;
+    }
+
     const mintedNFTs = [];
 
     for (let i = 0; i < qty; i++) {
-      // 1. Build & pin metadata
+      // 1. Build & pin metadata (with content + properties)
       const metadata = ipfsService.buildNFTMetadata({
         name: assetName || `${displayName} Asset #${i + 1}`,
         description: assetDescription || `Digital asset NFT by ${displayName}`,
-        image: null,
+        imageUrl: contentUrl,
         assetType: assetType || 'digital_asset',
         backingXrp: 0,
         creatorName: displayName,
+        properties: hasProperties ? properties : undefined,
+        contentMimeType,
       });
       const metadataUri = await ipfsService.pinMetadata(metadata);
 
@@ -57,9 +91,9 @@ router.post('/mint', async (req, res) => {
       // 4. Store in database
       const nftResult = await pool.query(
         `INSERT INTO nfts (token_id, creator_address, asset_type, asset_name, asset_description,
-         metadata_uri, backing_xrp, list_price_xrp, last_sale_price_xrp, sale_count,
-         status, owner_address)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         asset_image_url, metadata_uri, properties, backing_xrp, list_price_xrp,
+         last_sale_price_xrp, sale_count, status, owner_address)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           mintResult.tokenId,
@@ -67,7 +101,9 @@ router.post('/mint', async (req, res) => {
           assetType || 'digital_asset',
           assetName || `${displayName} Asset #${i + 1}`,
           assetDescription || `Digital asset NFT by ${displayName}`,
+          contentUrl,
           metadataUri,
+          JSON.stringify(properties),
           0,
           listPrice,
           0,
