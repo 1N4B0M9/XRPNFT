@@ -24,7 +24,6 @@ npm run install:all
 ```bash
 # Initialize SQLite schema (creates backend/data.db automatically)
 npm run db:init
-*if needed use `npm run db:reset` to reset database
 ```
 
 ### 3. Configure Environment
@@ -48,6 +47,9 @@ PINATA_SECRET_KEY=your_secret
 ```bash
 # Starts both frontend and backend server
 npm run dev
+
+# If needed reset database with
+npm run db:reset
 ```
 
 - **Frontend**: http://localhost:5173
