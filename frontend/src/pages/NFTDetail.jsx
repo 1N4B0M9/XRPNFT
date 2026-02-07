@@ -88,8 +88,8 @@ export default function NFTDetail() {
     setSuccess('');
     try {
 
-      const { data } = await api.redeemNFT(id, wallet.address, wallet.seed);
-      setSuccess({ message: `Redeemed! ${data.redemption.amountXrp} XRP released.`, txHash: data.redemption.burnTxHash });
+      const { data } = await api.relistNFT(id, wallet.address, wallet.seed, parseFloat(relistPrice));
+      setSuccess({ message: `Listed for ${relistPrice} XRP!`, txHash: data.txHash });
       loadNFT();
     } catch (err) {
       setError(err.response?.data?.error || 'Relist failed');

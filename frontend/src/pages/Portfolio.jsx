@@ -214,10 +214,10 @@ export default function Portfolio() {
               {royaltyEarnings.earnings.map((e) => (
                 <div key={e.id} className="bg-surface-900 border border-surface-800 rounded-xl p-4 flex items-center justify-between">
                   <div>
-                    <p className="font-medium">{r.asset_name}</p>
+                    <p className="font-medium">{e.asset_name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
                       <span className="text-xs text-surface-500">Burn TX:</span>
-                      <ExplorerLink type="tx" value={r.burn_tx_hash} />
+                      <ExplorerLink type="tx" value={e.burn_tx_hash} />
                     </div>
                   </div>
                   <div className="text-right">
