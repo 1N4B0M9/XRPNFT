@@ -173,14 +173,16 @@ export default function NFTDetail() {
         Back
       </button>
 
-      <div className="grid lg:grid-cols-2 gap-8">
-        {/* Left: Image / Visual */}
-        <div className="bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden">
-                 <div className="aspect-square relative">
+      <div className="grid lg:grid-cols-2 gap-8 lg:items-start">
+        {/* Left: Square image (fits like card); column sizes to content so no black gap */}
+        <div className="bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden w-full">
+          <div className="aspect-square relative">
             {hasImage ? (
               <img src={imageUrl} alt={nft.asset_name} className="absolute inset-0 w-full h-full object-cover" />
             ) : (
-              <NFTVisual nft={nft} size="detail" />
+              <div className="absolute inset-0 w-full h-full">
+                <NFTVisual nft={nft} size="detail" />
+              </div>
             )}
 
             {/* Escrow & List price badge */}
