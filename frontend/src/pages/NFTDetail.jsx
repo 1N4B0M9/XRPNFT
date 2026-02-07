@@ -132,7 +132,6 @@ export default function NFTDetail() {
   const isOwner = wallet && nft.owner_address === wallet.address;
   const canBuy = wallet && nft.status === 'listed' && !isOwner;
   const canRelist = wallet && nft.status === 'owned' && isOwner;
-  const currentValue = nft.last_sale_price_xrp > 0 ? nft.last_sale_price_xrp : nft.list_price_xrp;
   const isRoyaltyNFT = !!nft.royalty_pool_id;
   const backingXrp = parseFloat(nft.backing_xrp || 0);
   const canRedeem = isOwner && backingXrp > 0 && nft.status !== 'redeemed';
@@ -184,30 +183,28 @@ export default function NFTDetail() {
               <NFTVisual nft={nft} size="detail" />
             )}
 
-            {/* Value Badge */}
+            {/* Escrow & List price badge */}
             <div className="absolute bottom-4 left-4 right-4 bg-surface-900/90 backdrop-blur-md rounded-xl p-4 flex items-center justify-between z-20">
               <div>
-                <p className="text-[10px] text-surface-500 uppercase tracking-wider">
-                  {nft.sale_count > 0 ? 'Market Value' : 'List Price'}
+                <p className="text-[10px] text-surface-500 uppercase tracking-wider flex items-center gap-0.5">
+                  <Lock className="w-2.5 h-2.5" /> Escrow
                 </p>
-                <p className="text-xl font-bold text-green-400">
-                  {parseFloat(currentValue || 0).toFixed(1)} XRP
+                <p className={`text-lg font-bold ${backingXrp > 0 ? 'text-amber-400' : 'text-surface-500'}`}>
+                  {backingXrp > 0 ? `${backingXrp.toFixed(1)} XRP` : '—'}
                 </p>
               </div>
-              {backingXrp > 0 && (
-                <div className="text-center">
-                  <p className="text-[10px] text-surface-500 uppercase tracking-wider flex items-center gap-0.5 justify-center">
-                    <Lock className="w-2.5 h-2.5" /> Floor
-                  </p>
-                  <p className="text-lg font-bold text-amber-400">{backingXrp.toFixed(1)} XRP</p>
-                </div>
-              )}
               {nft.sale_count > 0 && (
-                <div className="text-right">
+                <div className="text-center">
                   <p className="text-[10px] text-surface-500 uppercase tracking-wider">Sales</p>
                   <p className="text-lg font-bold text-blue-400">{nft.sale_count}</p>
                 </div>
               )}
+              <div className="text-right">
+                <p className="text-[10px] text-surface-500 uppercase tracking-wider">List</p>
+                <p className="text-lg font-bold text-white">
+                  {nft.list_price_xrp != null ? `${parseFloat(nft.list_price_xrp).toFixed(1)} XRP` : '—'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -253,12 +250,18 @@ export default function NFTDetail() {
             </div>
           )}
 
-          {/* Details Grid */}
+          {/* Details Grid: Escrow, List, Last Sale, Asset Type, Token ID */}
           <div className="grid grid-cols-2 gap-4">
+            <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
+              <p className="text-xs text-surface-500 uppercase tracking-wider">Escrow</p>
+              <p className={`text-lg font-bold mt-1 ${backingXrp > 0 ? 'text-amber-400' : 'text-surface-500'}`}>
+                {backingXrp > 0 ? `${backingXrp.toFixed(1)} XRP` : '—'}
+              </p>
+            </div>
             <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
               <p className="text-xs text-surface-500 uppercase tracking-wider">List Price</p>
               <p className="text-lg font-bold text-white mt-1">
-                {nft.list_price_xrp ? `${parseFloat(nft.list_price_xrp).toFixed(1)} XRP` : 'N/A'}
+                {nft.list_price_xrp != null ? `${parseFloat(nft.list_price_xrp).toFixed(1)} XRP` : '—'}
               </p>
             </div>
             <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
@@ -271,7 +274,7 @@ export default function NFTDetail() {
               <p className="text-xs text-surface-500 uppercase tracking-wider">Asset Type</p>
               <p className="text-sm font-semibold mt-1 capitalize">{nft.asset_type}</p>
             </div>
-            <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
+            <div className="bg-surface-900 border border-surface-800 rounded-xl p-4 col-span-2">
               <p className="text-xs text-surface-500 uppercase tracking-wider">Token ID</p>
               <div className="mt-1">
                 {nft.token_id ? (
@@ -399,7 +402,7 @@ export default function NFTDetail() {
                   placeholder="e.g., 75"
                   min="0.01"
                   step="0.1"
-                  className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-no-spinner w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <div className="flex gap-2">
                   <button

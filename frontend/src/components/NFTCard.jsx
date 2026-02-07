@@ -18,7 +18,6 @@ function resolveImageUrl(url) {
 
 export default function NFTCard({ nft }) {
   const isRoyalty = !!nft.royalty_pool_id || nft.asset_type === 'royalty';
-  const displayValue = nft.last_sale_price_xrp > 0 ? nft.last_sale_price_xrp : nft.list_price_xrp;
   const backingXrp = parseFloat(nft.backing_xrp || 0);
   const imageUrl = resolveImageUrl(nft.asset_image_url);
   const hasImage = !!imageUrl;
@@ -26,7 +25,7 @@ export default function NFTCard({ nft }) {
   return (
     <Link
       to={`/nft/${nft.id}`}
-      className="group block bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden hover:border-primary-600/50 transition-all duration-200 hover:shadow-lg hover:shadow-primary-600/10 hover:scale-[1.02]"
+      className="group block bg-surface-900 border border-surface-800 rounded-lg overflow-hidden hover:border-primary-600/50 transition-all duration-200 hover:shadow-lg hover:shadow-primary-600/10 hover:scale-[1.02]"
     >
 {/* Image or Generative Visual */}
 <div className="aspect-square relative overflow-hidden">
@@ -88,31 +87,19 @@ export default function NFTCard({ nft }) {
           )}
         </p>
 
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex items-center justify-between gap-2">
           <div>
-            <p className="text-[10px] text-surface-500 uppercase tracking-wider">
-              {nft.last_sale_price_xrp > 0 ? 'Value' : 'Price'}
-            </p>
-            <p className="text-sm font-bold text-green-400">
-              {parseFloat(displayValue || 0).toFixed(1)} XRP
+            <p className="text-[10px] text-surface-500 uppercase tracking-wider">Escrow</p>
+            <p className={`text-sm font-bold ${backingXrp > 0 ? 'text-amber-400' : 'text-surface-500'}`}>
+              {backingXrp > 0 ? `${backingXrp.toFixed(1)} XRP` : '—'}
             </p>
           </div>
-          {nft.list_price_xrp && nft.last_sale_price_xrp > 0 && nft.status === 'listed' && (
-            <div className="text-right">
-              <p className="text-[10px] text-surface-500 uppercase tracking-wider">Ask</p>
-              <p className="text-sm font-bold text-white">
-                {parseFloat(nft.list_price_xrp).toFixed(1)} XRP
-              </p>
-            </div>
-          )}
-          {!nft.last_sale_price_xrp && nft.list_price_xrp && (
-            <div className="text-right">
-              <p className="text-[10px] text-surface-500 uppercase tracking-wider">Price</p>
-              <p className="text-sm font-bold text-white">
-                {parseFloat(nft.list_price_xrp).toFixed(1)} XRP
-              </p>
-            </div>
-          )}
+          <div className="text-right">
+            <p className="text-[10px] text-surface-500 uppercase tracking-wider">List</p>
+            <p className="text-sm font-bold text-white">
+              {nft.list_price_xrp != null ? `${parseFloat(nft.list_price_xrp).toFixed(1)} XRP` : '—'}
+            </p>
+          </div>
         </div>
       </div>
     </Link>
