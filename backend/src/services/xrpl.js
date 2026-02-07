@@ -83,9 +83,9 @@ export async function createEscrow(senderSeed, amountXrp, destinationAddress, co
   const c = await getClient();
   const wallet = xrpl.Wallet.fromSeed(senderSeed);
 
-  // Escrow finishes 1 minute from now (for demo purposes — short window)
+  // Escrow finishes 5 seconds from now (short window so buyers can redeem quickly)
   const finishAfter = xrpl.isoTimeToRippleTime(
-    new Date(Date.now() + 60 * 1000).toISOString()
+    new Date(Date.now() + 5 * 1000).toISOString()
   );
 
   // Cancel after 30 days

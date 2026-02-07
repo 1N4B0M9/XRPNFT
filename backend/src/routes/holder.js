@@ -36,6 +36,7 @@ router.post('/:nftId/redeem', async (req, res) => {
     }
 
     // 1. Finish the escrow to release the XRP to the current owner
+    //    If this fails, DO NOT burn the NFT — the user would lose both the NFT and the escrow XRP.
     let escrowFinishResult;
     try {
       escrowFinishResult = await xrplService.finishEscrow(
@@ -44,11 +45,13 @@ router.post('/:nftId/redeem', async (req, res) => {
         nft.escrow_sequence
       );
     } catch (escrowErr) {
-      console.warn('Escrow finish failed (may have already been released):', escrowErr.message);
-      // Continue with burn even if escrow finish fails (escrow may have expired/been cancelled)
+      console.error('Escrow finish failed:', escrowErr.message);
+      return res.status(400).json({
+        error: 'Could not release escrow XRP. The escrow may not be finishable yet — please wait a few seconds and try again.',
+      });
     }
 
-    // 2. Burn the NFT on XRPL
+    // 2. Burn the NFT on XRPL (only after escrow was successfully released)
     let burnResult;
     if (nft.token_id) {
       burnResult = await xrplService.burnNFT(ownerWalletSeed, nft.token_id);

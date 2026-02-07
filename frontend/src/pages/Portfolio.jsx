@@ -34,6 +34,14 @@ export default function Portfolio() {
     }
   }, [wallet?.address]);
 
+  // Always re-fetch when the page is navigated to (e.g. after burn/buy on another page)
+  useEffect(() => {
+    if (wallet?.address) {
+      loadPortfolio();
+      refreshBalance();
+    }
+  }, []); // runs on every mount
+
   const loadPortfolio = async () => {
     setLoading(true);
     try {
@@ -99,7 +107,7 @@ export default function Portfolio() {
       {/* Stats */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'XRP Balance', value: `${parseFloat(portfolio?.xrpBalance || 0).toFixed(2)} XRP`, icon: Wallet, color: 'text-blue-400', iconBg: 'bg-blue-500/15', border: 'border-blue-800/40' },
+          { label: 'XRP Balance', value: `${parseFloat(wallet?.balance ?? portfolio?.xrpBalance ?? 0).toFixed(2)} XRP`, icon: Wallet, color: 'text-blue-400', iconBg: 'bg-blue-500/15', border: 'border-blue-800/40' },
           { label: 'NFTs Held', value: portfolio?.stats?.totalNFTs || 0, icon: Briefcase, color: 'text-purple-400', iconBg: 'bg-purple-500/15', border: 'border-purple-800/40' },
           { label: 'Portfolio Value', value: `${(portfolio?.stats?.totalPortfolioValue || 0).toFixed(1)} XRP`, icon: TrendingUp, color: 'text-green-400', iconBg: 'bg-green-500/15', border: 'border-green-800/40' },
           { label: 'Royalty Earnings', value: `${(royaltyEarnings.totalEarnings || 0).toFixed(2)} XRP`, icon: DollarSign, color: 'text-amber-400', iconBg: 'bg-amber-500/15', border: 'border-amber-800/40' },
