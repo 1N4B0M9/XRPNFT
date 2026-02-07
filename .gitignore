@@ -5,24 +5,3 @@ dist/
 *.db-wal
 *.db-shm
 .DS_Store
-# Database
-DATABASE_URL=postgresql://postgres:postgres@localhost:5432/digital_asset_tartan
-
-# XRPL Testnet (using XRPL Labs server — more reliable)
-XRPL_NETWORK=wss://testnet.xrpl-labs.com
-XRPL_FAUCET=https://faucet.altnet.rippletest.net/accounts
-
-# Pinata (IPFS) - replace with your keys
-PINATA_API_KEY=942015ea4927f2b22f61
-PINATA_SECRET_KEY=d98f40a8f05e2d98e1d45f2993446dccab658441c66b5557c7efbd74b1c8305c
-
-
-
-
-# Server
-PORT=3001
-FRONTEND_URL=http://localhost:5173
-
-# Xumm - replace with your keys
-XUMM_API_KEY=
-XUMM_API_SECRET=
