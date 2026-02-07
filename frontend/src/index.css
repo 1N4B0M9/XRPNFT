@@ -63,3 +63,13 @@ body {
 .glow-pulse {
   animation: pulse-glow 2s ease-in-out infinite;
 }
+
+/* Toast animation */
+@keyframes toastIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.animate-toast-in {
+  animation: toastIn 0.3s ease-out forwards;
+}

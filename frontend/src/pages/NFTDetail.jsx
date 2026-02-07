@@ -4,10 +4,7 @@ import { useWallet } from '../hooks/useWallet';
 import {
   ArrowLeft,
   Coins,
-  ArrowRightLeft,
-  AlertCircle,
   RefreshCw,
-  Zap,
   TrendingUp,
   Tag,
   Repeat,
@@ -15,14 +12,17 @@ import {
 } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import * as api from '../services/api';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { useToast } from '../components/Toast';
+import { SkeletonNFTDetail } from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import ExplorerLink from '../components/ExplorerLink';
+import NFTVisual from '../components/NFTVisual';
 
 export default function NFTDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { wallet } = useWallet();
+  const { toast } = useToast();
 
   const [nft, setNft] = useState(null);
   const [transactions, setTransactions] = useState([]);
@@ -33,8 +33,6 @@ export default function NFTDetail() {
   const [relisting, setRelisting] = useState(false);
   const [relistPrice, setRelistPrice] = useState('');
   const [showRelistForm, setShowRelistForm] = useState(false);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
 
   useEffect(() => {
     loadNFT();
@@ -64,14 +62,12 @@ export default function NFTDetail() {
       return;
     }
     setBuying(true);
-    setError('');
-    setSuccess('');
     try {
       const { data } = await api.purchaseNFT(id, wallet.address, wallet.seed);
-      setSuccess({ message: 'Purchase successful!', txHash: data.txHash });
+      toast({ type: 'success', title: 'Purchase Successful!', message: `TX: ${data.txHash?.slice(0, 12)}...` });
       loadNFT();
     } catch (err) {
-      setError(err.response?.data?.error || 'Purchase failed');
+      toast({ type: 'error', title: 'Purchase Failed', message: err.response?.data?.error || 'Purchase failed' });
     } finally {
       setBuying(false);
     }
@@ -79,25 +75,24 @@ export default function NFTDetail() {
 
   const handleRelist = async () => {
     if (!relistPrice || parseFloat(relistPrice) <= 0) {
-      setError('Please enter a valid price');
+      toast({ type: 'error', message: 'Please enter a valid price' });
       return;
     }
     setRelisting(true);
-    setError('');
-    setSuccess('');
     try {
-
       const { data } = await api.relistNFT(id, wallet.address, wallet.seed, parseFloat(relistPrice));
-      setSuccess({ message: `Listed for ${relistPrice} XRP!`, txHash: data.txHash });
+      toast({ type: 'success', title: 'NFT Relisted!', message: `Listed for ${relistPrice} XRP` });
+      setShowRelistForm(false);
+      setRelistPrice('');
       loadNFT();
     } catch (err) {
-      setError(err.response?.data?.error || 'Relist failed');
+      toast({ type: 'error', title: 'Relist Failed', message: err.response?.data?.error || 'Relist failed' });
     } finally {
       setRelisting(false);
     }
   };
 
-  if (loading) return <LoadingSpinner text="Loading NFT details..." />;
+  if (loading) return <SkeletonNFTDetail />;
   if (!nft) {
     return (
       <div className="text-center py-16">
@@ -138,17 +133,11 @@ export default function NFTDetail() {
       <div className="grid lg:grid-cols-2 gap-8">
         {/* Left: Image / Visual */}
         <div className="bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden">
-          <div className="aspect-square bg-gradient-to-br from-primary-900/40 to-surface-900 flex items-center justify-center relative">
-            <div className="text-center">
-              <Zap className="w-20 h-20 text-primary-500/30 mx-auto mb-4" />
-              <p className="text-xl font-bold text-surface-400">{nft.asset_type}</p>
-              <p className="text-sm text-surface-600 mt-1">
-                {isRoyaltyNFT ? `${nft.royalty_percentage}% Royalty NFT` : 'Digital Asset NFT'}
-              </p>
-            </div>
+          <div className="aspect-square relative">
+            <NFTVisual nft={nft} size="detail" />
 
             {/* Value Badge */}
-            <div className="absolute bottom-4 left-4 right-4 bg-surface-900/90 backdrop-blur rounded-xl p-4 flex items-center justify-between">
+            <div className="absolute bottom-4 left-4 right-4 bg-surface-900/90 backdrop-blur-md rounded-xl p-4 flex items-center justify-between z-20">
               <div>
                 <p className="text-[10px] text-surface-500 uppercase tracking-wider">
                   {nft.sale_count > 0 ? 'Market Value' : 'List Price'}
@@ -326,23 +315,6 @@ export default function NFTDetail() {
             )}
           </div>
 
-          {error && (
-            <div className="p-3 bg-red-900/20 border border-red-800 rounded-xl text-sm text-red-400 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="p-3 bg-green-900/20 border border-green-800 rounded-xl text-sm text-green-400">
-              <p>{success.message || success}</p>
-              {success.txHash && (
-                <div className="mt-2 flex items-center gap-2">
-                  <span className="text-green-500/70">TX:</span>
-                  <ExplorerLink type="tx" value={success.txHash} />
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
 

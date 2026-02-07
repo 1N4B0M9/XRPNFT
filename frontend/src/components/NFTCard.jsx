@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import { Zap } from 'lucide-react';
+import NFTVisual from './NFTVisual';
 
 export default function NFTCard({ nft }) {
   const isRoyalty = !!nft.royalty_pool_id || nft.asset_type === 'royalty';
@@ -8,35 +8,27 @@ export default function NFTCard({ nft }) {
   return (
     <Link
       to={`/nft/${nft.id}`}
-      className="group block bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden hover:border-primary-600/50 transition-all hover:shadow-lg hover:shadow-primary-600/10"
+      className="group block bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden hover:border-primary-600/50 transition-all duration-200 hover:shadow-lg hover:shadow-primary-600/10 hover:scale-[1.02]"
     >
-      {/* Image */}
-      <div className="aspect-square bg-gradient-to-br from-primary-900/50 to-surface-800 relative overflow-hidden">
-        <div className="absolute inset-0 flex items-center justify-center">
-          <div className="text-center">
-            <Zap className="w-12 h-12 text-primary-500/50 mx-auto mb-2" />
-            <p className="text-sm font-semibold text-surface-400 capitalize">{nft.asset_type || 'Digital Asset'}</p>
-            {isRoyalty && nft.royalty_percentage && (
-              <p className="text-xs text-purple-400 mt-1 font-bold">{nft.royalty_percentage}% Royalty</p>
-            )}
-          </div>
-        </div>
+      {/* Generative Visual */}
+      <div className="aspect-square relative overflow-hidden">
+        <NFTVisual nft={nft} size="card" />
 
         {/* Status Badge */}
-        <div className="absolute top-3 left-3 flex items-center gap-1">
+        <div className="absolute top-3 left-3 flex items-center gap-1 z-20">
           <span
-            className={`text-[10px] font-medium px-2 py-1 rounded-full ${
+            className={`text-[10px] font-medium px-2 py-1 rounded-full backdrop-blur-sm ${
               nft.status === 'listed'
-                ? 'bg-green-900/40 text-green-400'
+                ? 'bg-green-900/60 text-green-400'
                 : nft.status === 'owned'
-                ? 'bg-blue-900/40 text-blue-400'
-                : 'bg-surface-700 text-surface-400'
+                ? 'bg-blue-900/60 text-blue-400'
+                : 'bg-surface-700/80 text-surface-400'
             }`}
           >
             {nft.status?.toUpperCase()}
           </span>
           {isRoyalty && (
-            <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-purple-900/40 text-purple-400">
+            <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-purple-900/60 backdrop-blur-sm text-purple-400">
               ROYALTY
             </span>
           )}
@@ -44,8 +36,10 @@ export default function NFTCard({ nft }) {
 
         {/* Sale count badge */}
         {nft.sale_count > 0 && (
-          <div className="absolute bottom-3 right-3 bg-surface-900/80 backdrop-blur px-2 py-1 rounded-full">
-            <span className="text-[10px] text-surface-300">{nft.sale_count} sale{nft.sale_count !== 1 ? 's' : ''}</span>
+          <div className="absolute bottom-3 right-3 bg-surface-900/80 backdrop-blur-sm px-2 py-1 rounded-full z-20">
+            <span className="text-[10px] text-surface-300">
+              {nft.sale_count} sale{nft.sale_count !== 1 ? 's' : ''}
+            </span>
           </div>
         )}
       </div>

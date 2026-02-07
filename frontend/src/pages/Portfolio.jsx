@@ -11,7 +11,7 @@ import {
 } from 'lucide-react';
 import * as api from '../services/api';
 import NFTCard from '../components/NFTCard';
-import LoadingSpinner from '../components/LoadingSpinner';
+import { SkeletonPortfolio } from '../components/Skeleton';
 import StatusBadge from '../components/StatusBadge';
 import ExplorerLink from '../components/ExplorerLink';
 
@@ -64,7 +64,7 @@ export default function Portfolio() {
     );
   }
 
-  if (loading) return <LoadingSpinner text="Loading portfolio..." />;
+  if (loading) return <div className="animate-fade-in"><SkeletonPortfolio /></div>;
 
   return (
     <div className="animate-fade-in space-y-8">
@@ -216,8 +216,8 @@ export default function Portfolio() {
                   <div>
                     <p className="font-medium">{e.asset_name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
-                      <span className="text-xs text-surface-500">Burn TX:</span>
-                      <ExplorerLink type="tx" value={e.burn_tx_hash} />
+                      <span className="text-xs text-surface-500">{e.pool_name}</span>
+                      {e.tx_hash && <ExplorerLink type="tx" value={e.tx_hash} />}
                     </div>
                   </div>
                   <div className="text-right">

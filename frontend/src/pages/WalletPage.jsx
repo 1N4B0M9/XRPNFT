@@ -1,38 +1,39 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
+import { useToast } from '../components/Toast';
 import { Wallet, Plus, KeyRound, Copy, Check, RefreshCw } from 'lucide-react';
 import LoadingSpinner from '../components/LoadingSpinner';
 import ExplorerLink from '../components/ExplorerLink';
 
 export default function WalletPage() {
   const { wallet, loading, createNewWallet, loginWithSeed, refreshBalance, logout } = useWallet();
+  const { toast } = useToast();
   const [seed, setSeed] = useState('');
   const [displayName, setDisplayName] = useState('');
-  const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
-  const [mode, setMode] = useState('create'); // 'create' | 'import'
+  const [mode, setMode] = useState('create');
   const navigate = useNavigate();
 
   const handleCreate = async () => {
-    setError('');
     try {
       await createNewWallet(displayName || undefined);
+      toast({ type: 'success', title: 'Wallet Created!', message: 'Funded with ~100 testnet XRP' });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create wallet');
+      toast({ type: 'error', title: 'Wallet Creation Failed', message: err.response?.data?.error || 'Failed to create wallet' });
     }
   };
 
   const handleImport = async () => {
-    setError('');
     if (!seed.trim()) {
-      setError('Please enter a wallet seed');
+      toast({ type: 'error', message: 'Please enter a wallet seed' });
       return;
     }
     try {
       await loginWithSeed(seed.trim());
+      toast({ type: 'success', title: 'Wallet Connected!', message: 'Successfully imported wallet' });
     } catch (err) {
-      setError(err.response?.data?.error || 'Invalid seed or connection error');
+      toast({ type: 'error', title: 'Connection Failed', message: err.response?.data?.error || 'Invalid seed or connection error' });
     }
   };
 
@@ -204,11 +205,6 @@ export default function WalletPage() {
           </div>
         )}
 
-        {error && (
-          <div className="mt-4 p-3 bg-red-900/20 border border-red-800 rounded-xl text-sm text-red-400">
-            {error}
-          </div>
-        )}
       </div>
     </div>
   );

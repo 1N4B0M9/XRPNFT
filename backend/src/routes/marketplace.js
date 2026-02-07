@@ -7,7 +7,7 @@ const router = Router();
 // ─── Browse Listed NFTs ──────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const { assetType, maxPrice, sort } = req.query;
+    const { assetType, maxPrice, minPrice, sort, search } = req.query;
 
     let query = `
       SELECT n.*, u.display_name as creator_name,
@@ -19,9 +19,19 @@ router.get('/', async (req, res) => {
     `;
     const params = [];
 
+    if (search) {
+      params.push(`%${search}%`);
+      query += ` AND (n.asset_name LIKE $${params.length} OR u.display_name LIKE $${params.length})`;
+    }
+
     if (assetType) {
       params.push(assetType);
       query += ` AND n.asset_type = $${params.length}`;
+    }
+
+    if (minPrice) {
+      params.push(parseFloat(minPrice));
+      query += ` AND n.list_price_xrp >= $${params.length}`;
     }
 
     if (maxPrice) {

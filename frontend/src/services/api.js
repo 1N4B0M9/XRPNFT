@@ -5,7 +5,7 @@ const api = axios.create({
   timeout: 120000, // XRPL operations can be slow
 });
 
-// ─── Creator ────────────────────────────────────────────────────
+// ─── Creator / Company ───────────────────────────────────────────
 export const mintNFTs = (data) =>
   api.post('/creator/mint', data);
 

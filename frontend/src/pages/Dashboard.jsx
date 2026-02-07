@@ -8,17 +8,43 @@ import {
   Package,
   RefreshCw,
   ChevronRight,
-  AlertCircle,
   Music,
   Send,
+  Minus,
+  Gamepad2,
+  Palette,
+  Diamond,
+  Sparkles,
+  Info,
 } from 'lucide-react';
 import * as api from '../services/api';
+import { useToast } from '../components/Toast';
 import NFTCard from '../components/NFTCard';
-import LoadingSpinner from '../components/LoadingSpinner';
+import NFTVisual from '../components/NFTVisual';
+import StepIndicator from '../components/StepIndicator';
+
+const WIZARD_STEPS = [
+  { id: 'mint', label: 'Mint NFTs', icon: Plus },
+  { id: 'royalty', label: 'Royalty Pools', icon: Music },
+  { id: 'distribute', label: 'Distribute', icon: Send },
+];
+
+const ASSET_TYPES = [
+  { value: 'digital_asset', label: 'Digital Asset', icon: Package, color: 'text-blue-400', bg: 'bg-blue-900/30 border-blue-800/40' },
+  { value: 'gaming', label: 'Gaming', icon: Gamepad2, color: 'text-green-400', bg: 'bg-green-900/30 border-green-800/40' },
+  { value: 'art', label: 'Art', icon: Palette, color: 'text-purple-400', bg: 'bg-purple-900/30 border-purple-800/40' },
+  { value: 'music', label: 'Music', icon: Music, color: 'text-pink-400', bg: 'bg-pink-900/30 border-pink-800/40' },
+  { value: 'collectible', label: 'Collectible', icon: Diamond, color: 'text-amber-400', bg: 'bg-amber-900/30 border-amber-800/40' },
+  { value: 'other', label: 'Other', icon: Sparkles, color: 'text-surface-400', bg: 'bg-surface-800 border-surface-700' },
+];
 
 export default function Dashboard() {
   const { wallet, refreshBalance } = useWallet();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  // Wizard state
+  const [currentStep, setCurrentStep] = useState(0);
 
   // Minting form
   const [mintForm, setMintForm] = useState({
@@ -26,7 +52,7 @@ export default function Dashboard() {
     assetDescription: '',
     assetType: 'digital_asset',
     listPriceXrp: '50',
-    quantity: '1',
+    quantity: 1,
   });
 
   // Royalty pool form
@@ -41,6 +67,7 @@ export default function Dashboard() {
   // Distribute form
   const [distributePoolId, setDistributePoolId] = useState('');
   const [distributeAmount, setDistributeAmount] = useState('');
+  const [showDistributeConfirm, setShowDistributeConfirm] = useState(false);
 
   // State
   const [myNFTs, setMyNFTs] = useState([]);
@@ -50,9 +77,9 @@ export default function Dashboard() {
   const [minting, setMinting] = useState(false);
   const [creatingPool, setCreatingPool] = useState(false);
   const [distributing, setDistributing] = useState(false);
-  const [activeSection, setActiveSection] = useState('mint');
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
+
+  // Validation
+  const [mintErrors, setMintErrors] = useState({});
 
   useEffect(() => {
     if (wallet?.address) loadCreatorData();
@@ -68,7 +95,6 @@ export default function Dashboard() {
         api.getBalance(wallet.address),
       ]);
       setMyNFTs(nftRes.data.nfts);
-      // Filter pools to only show ones created by this wallet
       setRoyaltyPools(
         poolsRes.data.pools.filter((p) => p.creator_address === wallet.address)
       );
@@ -80,24 +106,34 @@ export default function Dashboard() {
     }
   };
 
+  const validateMint = () => {
+    const errors = {};
+    if (!mintForm.assetName.trim()) errors.assetName = 'Asset name is required';
+    if (mintForm.assetName.length > 100) errors.assetName = 'Name must be under 100 characters';
+    if (!mintForm.listPriceXrp || parseFloat(mintForm.listPriceXrp) <= 0) errors.listPriceXrp = 'Price must be greater than 0';
+    if (mintForm.quantity < 1 || mintForm.quantity > 20) errors.quantity = 'Quantity must be 1-20';
+    setMintErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
   const handleMint = async () => {
+    if (!validateMint()) return;
     setMinting(true);
-    setError('');
-    setSuccess('');
     try {
       const { data } = await api.mintNFTs({
         walletAddress: wallet.address,
-        assetName: mintForm.assetName || 'My Asset',
+        assetName: mintForm.assetName,
         assetDescription: mintForm.assetDescription || 'Digital asset NFT',
         assetType: mintForm.assetType,
         listPriceXrp: parseFloat(mintForm.listPriceXrp),
-        quantity: parseInt(mintForm.quantity),
+        quantity: mintForm.quantity,
       });
-      setSuccess(data.message);
+      toast({ type: 'success', title: 'NFTs Minted!', message: data.message });
+      setMintForm({ assetName: '', assetDescription: '', assetType: 'digital_asset', listPriceXrp: '50', quantity: 1 });
       loadCreatorData();
       refreshBalance();
     } catch (err) {
-      setError(err.response?.data?.error || 'Minting failed');
+      toast({ type: 'error', title: 'Minting Failed', message: err.response?.data?.error || 'Minting failed' });
     } finally {
       setMinting(false);
     }
@@ -105,12 +141,10 @@ export default function Dashboard() {
 
   const handleCreateRoyaltyPool = async () => {
     if (!royaltyForm.name.trim()) {
-      setError('Pool name is required');
+      toast({ type: 'error', message: 'Pool name is required' });
       return;
     }
     setCreatingPool(true);
-    setError('');
-    setSuccess('');
     try {
       const { data } = await api.createRoyaltyPool({
         walletAddress: wallet.address,
@@ -120,11 +154,11 @@ export default function Dashboard() {
         royaltyPerNft: parseFloat(royaltyForm.royaltyPerNft),
         listPriceXrp: parseFloat(royaltyForm.listPriceXrp),
       });
-      setSuccess(data.message);
+      toast({ type: 'success', title: 'Royalty Pool Created!', message: data.message });
       loadCreatorData();
       refreshBalance();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create royalty pool');
+      toast({ type: 'error', title: 'Pool Creation Failed', message: err.response?.data?.error || 'Failed to create royalty pool' });
     } finally {
       setCreatingPool(false);
     }
@@ -132,38 +166,53 @@ export default function Dashboard() {
 
   const handleDistribute = async () => {
     if (!distributePoolId || !distributeAmount) {
-      setError('Select a pool and enter an amount');
+      toast({ type: 'error', message: 'Select a pool and enter an amount' });
       return;
     }
     setDistributing(true);
-    setError('');
-    setSuccess('');
     try {
       const { data } = await api.distributeRoyalty(
         distributePoolId,
         parseFloat(distributeAmount),
         wallet.address
       );
-      setSuccess(data.message);
+      toast({ type: 'success', title: 'Distribution Complete!', message: data.message });
       setDistributeAmount('');
+      setShowDistributeConfirm(false);
       loadCreatorData();
       refreshBalance();
     } catch (err) {
-      setError(err.response?.data?.error || 'Distribution failed');
+      toast({ type: 'error', title: 'Distribution Failed', message: err.response?.data?.error || 'Distribution failed' });
     } finally {
       setDistributing(false);
     }
   };
 
+  // Create a preview NFT object for the live preview card
+  const previewNFT = {
+    id: 'preview-' + mintForm.assetType + mintForm.assetName,
+    asset_name: mintForm.assetName || 'Your Asset Name',
+    asset_type: mintForm.assetType,
+    list_price_xrp: mintForm.listPriceXrp || 0,
+    status: 'listed',
+    sale_count: 0,
+    last_sale_price_xrp: 0,
+    creator_name: 'You',
+  };
+
   if (!wallet) {
     return (
       <div className="text-center py-16 animate-fade-in">
-        <Zap className="w-16 h-16 text-surface-600 mx-auto mb-4" />
+        <div className="w-20 h-20 rounded-2xl bg-gradient-to-br from-primary-600 to-accent-600 flex items-center justify-center mx-auto mb-6">
+          <Zap className="w-10 h-10 text-white" />
+        </div>
         <h2 className="text-2xl font-bold mb-2">Creator Dashboard</h2>
-        <p className="text-surface-400 mb-6">Connect a wallet to start minting NFTs and creating royalty pools</p>
+        <p className="text-surface-400 mb-6 max-w-md mx-auto">
+          Connect a wallet to start minting NFTs on XRPL and creating royalty pools
+        </p>
         <button
           onClick={() => navigate('/wallet')}
-          className="px-6 py-3 bg-primary-600 hover:bg-primary-500 rounded-xl font-semibold transition-colors"
+          className="px-8 py-3 bg-primary-600 hover:bg-primary-500 rounded-xl font-semibold transition-colors active:scale-[0.98]"
         >
           Connect Wallet
         </button>
@@ -210,133 +259,218 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Section Tabs */}
-      <div className="flex gap-2 border-b border-surface-800">
-        {[
-          { id: 'mint', label: 'Mint NFTs', icon: Plus },
-          { id: 'royalty', label: 'Royalty Pools', icon: Music },
-          { id: 'distribute', label: 'Distribute Income', icon: Send },
-        ].map(({ id, label, icon: Icon }) => (
-          <button
-            key={id}
-            onClick={() => { setActiveSection(id); setError(''); setSuccess(''); }}
-            className={`px-4 py-2.5 text-sm font-medium flex items-center gap-2 border-b-2 transition-colors ${
-              activeSection === id
-                ? 'border-primary-500 text-primary-400'
-                : 'border-transparent text-surface-500 hover:text-white'
-            }`}
-          >
-            <Icon className="w-4 h-4" />
-            {label}
-          </button>
-        ))}
+      {/* Step Indicator */}
+      <div className="bg-surface-900 border border-surface-800 rounded-2xl p-5">
+        <StepIndicator
+          steps={WIZARD_STEPS}
+          currentStep={currentStep}
+          onStepClick={setCurrentStep}
+        />
       </div>
 
-      {/* Mint Form */}
-      {activeSection === 'mint' && (
-        <div className="bg-surface-900 border border-surface-800 rounded-2xl p-8">
-          <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
-            <Plus className="w-5 h-5 text-primary-400" />
-            Mint New NFTs
-          </h2>
+      {/* ── Step 0: Mint NFTs ─────────────────────────────────────────── */}
+      {currentStep === 0 && (
+        <div className="grid lg:grid-cols-3 gap-6">
+          {/* Form (2 cols) */}
+          <div className="lg:col-span-2 bg-surface-900 border border-surface-800 rounded-2xl p-6 sm:p-8">
+            <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
+              <Plus className="w-5 h-5 text-primary-400" />
+              Mint New NFTs
+            </h2>
 
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium mb-2">Asset Name</label>
-              <input
-                type="text"
-                value={mintForm.assetName}
-                onChange={(e) => setMintForm({ ...mintForm, assetName: e.target.value })}
-                placeholder="e.g., Game Skin, Artwork"
-                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
+            <div className="space-y-5">
+              {/* Asset Name */}
+              <div>
+                <label className="block text-sm font-medium mb-2">
+                  Asset Name <span className="text-red-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  value={mintForm.assetName}
+                  onChange={(e) => {
+                    setMintForm({ ...mintForm, assetName: e.target.value });
+                    if (mintErrors.assetName) setMintErrors({ ...mintErrors, assetName: null });
+                  }}
+                  placeholder="e.g., Cosmic Blade, Beat Drop #1"
+                  maxLength={100}
+                  className={`w-full bg-surface-800 border rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                    mintErrors.assetName ? 'border-red-600' : 'border-surface-700'
+                  }`}
+                />
+                <div className="flex items-center justify-between mt-1.5">
+                  {mintErrors.assetName ? (
+                    <p className="text-xs text-red-400">{mintErrors.assetName}</p>
+                  ) : (
+                    <p className="text-xs text-surface-600">This appears on the marketplace listing</p>
+                  )}
+                  <p className="text-xs text-surface-600">{mintForm.assetName.length}/100</p>
+                </div>
+              </div>
 
-            <div>
-              <label className="block text-sm font-medium mb-2">Asset Type</label>
-              <select
-                value={mintForm.assetType}
-                onChange={(e) => setMintForm({ ...mintForm, assetType: e.target.value })}
-                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+              {/* Asset Type - Visual Cards */}
+              <div>
+                <label className="block text-sm font-medium mb-3">Asset Type</label>
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                  {ASSET_TYPES.map(({ value, label, icon: Icon, color, bg }) => (
+                    <button
+                      key={value}
+                      onClick={() => setMintForm({ ...mintForm, assetType: value })}
+                      className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border transition-all ${
+                        mintForm.assetType === value
+                          ? 'ring-2 ring-primary-500 bg-primary-900/20 border-primary-700'
+                          : `${bg} hover:bg-surface-800`
+                      }`}
+                    >
+                      <Icon className={`w-5 h-5 ${mintForm.assetType === value ? 'text-primary-400' : color}`} />
+                      <span className="text-[11px] font-medium">{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Description */}
+              <div>
+                <label className="block text-sm font-medium mb-2">Description</label>
+                <textarea
+                  value={mintForm.assetDescription}
+                  onChange={(e) => setMintForm({ ...mintForm, assetDescription: e.target.value })}
+                  placeholder="Describe what makes this asset unique..."
+                  rows={3}
+                  maxLength={500}
+                  className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
+                />
+                <p className="text-xs text-surface-600 mt-1.5">{mintForm.assetDescription.length}/500</p>
+              </div>
+
+              {/* Price + Quantity Row */}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium mb-2">
+                    List Price <span className="text-red-400">*</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      value={mintForm.listPriceXrp}
+                      onChange={(e) => {
+                        setMintForm({ ...mintForm, listPriceXrp: e.target.value });
+                        if (mintErrors.listPriceXrp) setMintErrors({ ...mintErrors, listPriceXrp: null });
+                      }}
+                      min="0.01"
+                      step="0.1"
+                      className={`w-full bg-surface-800 border rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                        mintErrors.listPriceXrp ? 'border-red-600' : 'border-surface-700'
+                      }`}
+                    />
+                    <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-surface-500 font-semibold">
+                      XRP
+                    </span>
+                  </div>
+                  {mintErrors.listPriceXrp && (
+                    <p className="text-xs text-red-400 mt-1.5">{mintErrors.listPriceXrp}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium mb-2">Quantity</label>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => setMintForm({ ...mintForm, quantity: Math.max(1, mintForm.quantity - 1) })}
+                      className="p-3 bg-surface-800 border border-surface-700 rounded-xl hover:bg-surface-700 transition-colors"
+                    >
+                      <Minus className="w-4 h-4" />
+                    </button>
+                    <div className="flex-1 bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-center text-sm font-bold">
+                      {mintForm.quantity}
+                    </div>
+                    <button
+                      onClick={() => setMintForm({ ...mintForm, quantity: Math.min(20, mintForm.quantity + 1) })}
+                      className="p-3 bg-surface-800 border border-surface-700 rounded-xl hover:bg-surface-700 transition-colors"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
+                  {mintErrors.quantity && (
+                    <p className="text-xs text-red-400 mt-1.5">{mintErrors.quantity}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Mint Button */}
+              <button
+                onClick={handleMint}
+                disabled={minting}
+                className="w-full py-3.5 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-500 hover:to-accent-500 disabled:from-surface-700 disabled:to-surface-700 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
               >
-                <option value="digital_asset">Digital Asset</option>
-                <option value="gaming">Gaming</option>
-                <option value="art">Art</option>
-                <option value="music">Music</option>
-                <option value="collectible">Collectible</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-
-            <div className="sm:col-span-2">
-              <label className="block text-sm font-medium mb-2">Description</label>
-              <textarea
-                value={mintForm.assetDescription}
-                onChange={(e) => setMintForm({ ...mintForm, assetDescription: e.target.value })}
-                placeholder="Describe the asset..."
-                rows={2}
-                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">List Price (XRP)</label>
-              <input
-                type="number"
-                value={mintForm.listPriceXrp}
-                onChange={(e) => setMintForm({ ...mintForm, listPriceXrp: e.target.value })}
-                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium mb-2">Quantity</label>
-              <input
-                type="number"
-                min="1"
-                max="20"
-                value={mintForm.quantity}
-                onChange={(e) => setMintForm({ ...mintForm, quantity: e.target.value })}
-                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+                {minting ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 animate-spin" />
+                    Minting on XRPL...
+                  </>
+                ) : (
+                  <>
+                    <Coins className="w-4 h-4" />
+                    Mint {mintForm.quantity > 1 ? `${mintForm.quantity} NFTs` : 'NFT'} for {parseFloat(mintForm.listPriceXrp || 0).toFixed(1)} XRP each
+                  </>
+                )}
+              </button>
             </div>
           </div>
 
-          <button
-            onClick={handleMint}
-            disabled={minting}
-            className="mt-6 w-full py-3 bg-gradient-to-r from-primary-600 to-accent-600 hover:from-primary-500 hover:to-accent-500 disabled:from-surface-700 disabled:to-surface-700 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-          >
-            {minting ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Minting on XRPL... (this may take a moment)
-              </>
-            ) : (
-              <>
-                <Coins className="w-4 h-4" />
-                Mint & List NFTs
-              </>
-            )}
-          </button>
+          {/* Live Preview (1 col) */}
+          <div className="lg:col-span-1">
+            <div className="sticky top-24">
+              <p className="text-xs text-surface-500 uppercase tracking-wider font-semibold mb-3">Live Preview</p>
+              <div className="bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden">
+                <div className="aspect-square relative">
+                  <NFTVisual nft={previewNFT} size="card" />
+                </div>
+                <div className="p-4">
+                  <h3 className="font-semibold text-white truncate">
+                    {mintForm.assetName || 'Your Asset Name'}
+                  </h3>
+                  <p className="text-xs text-surface-500 mt-1">by You</p>
+                  <div className="mt-3 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] text-surface-500 uppercase tracking-wider">Price</p>
+                      <p className="text-sm font-bold text-green-400">
+                        {parseFloat(mintForm.listPriceXrp || 0).toFixed(1)} XRP
+                      </p>
+                    </div>
+                    {mintForm.quantity > 1 && (
+                      <div className="text-right">
+                        <p className="text-[10px] text-surface-500 uppercase tracking-wider">Qty</p>
+                        <p className="text-sm font-bold text-blue-400">x{mintForm.quantity}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Royalty Pool Form */}
-      {activeSection === 'royalty' && (
-        <div className="bg-surface-900 border border-surface-800 rounded-2xl p-8">
-          <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
+      {/* ── Step 1: Royalty Pools ────────────────────────────────────── */}
+      {currentStep === 1 && (
+        <div className="bg-surface-900 border border-surface-800 rounded-2xl p-6 sm:p-8">
+          <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
             <Music className="w-5 h-5 text-purple-400" />
             Create Royalty Pool
           </h2>
-          <p className="text-surface-400 text-sm mb-6">
-            Create a pool of NFTs that each represent a percentage of your royalty income.
-            Holders earn payouts when you distribute income.
-          </p>
+
+          {/* Info Banner */}
+          <div className="flex items-start gap-3 bg-purple-900/10 border border-purple-800/30 rounded-xl p-4 mb-6">
+            <Info className="w-5 h-5 text-purple-400 mt-0.5 shrink-0" />
+            <div className="text-sm text-surface-300">
+              <p className="font-medium text-purple-400 mb-1">How Royalty Pools Work</p>
+              <p>Create a pool of NFTs that each represent a percentage of your income. When you distribute XRP, it is sent proportionally to all NFT holders.</p>
+            </div>
+          </div>
 
           <div className="grid sm:grid-cols-2 gap-4">
             <div className="sm:col-span-2">
-              <label className="block text-sm font-medium mb-2">Pool Name *</label>
+              <label className="block text-sm font-medium mb-2">Pool Name <span className="text-red-400">*</span></label>
               <input
                 type="text"
                 value={royaltyForm.name}
@@ -344,6 +478,7 @@ export default function Dashboard() {
                 placeholder="e.g., Song X Royalties, Album Revenue"
                 className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
+              <p className="text-xs text-surface-600 mt-1.5">Displayed on the marketplace alongside each royalty NFT</p>
             </div>
 
             <div className="sm:col-span-2">
@@ -382,20 +517,27 @@ export default function Dashboard() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium mb-2">List Price per NFT (XRP)</label>
-              <input
-                type="number"
-                value={royaltyForm.listPriceXrp}
-                onChange={(e) => setRoyaltyForm({ ...royaltyForm, listPriceXrp: e.target.value })}
-                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-              />
+              <label className="block text-sm font-medium mb-2">List Price per NFT</label>
+              <div className="relative">
+                <input
+                  type="number"
+                  value={royaltyForm.listPriceXrp}
+                  onChange={(e) => setRoyaltyForm({ ...royaltyForm, listPriceXrp: e.target.value })}
+                  className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-surface-500 font-semibold">XRP</span>
+              </div>
             </div>
 
+            {/* Visual Summary */}
             <div className="flex items-end">
-              <div className="bg-surface-800 rounded-xl p-4 w-full text-center">
-                <p className="text-xs text-surface-500">Total Royalty Covered</p>
-                <p className="text-2xl font-bold text-purple-400 mt-1">
-                  {(parseFloat(royaltyForm.royaltyPerNft || 0) * parseInt(royaltyForm.totalNfts || 0)).toFixed(2)}%
+              <div className="bg-purple-900/20 border border-purple-800/30 rounded-xl p-4 w-full text-center">
+                <p className="text-xs text-purple-400 font-semibold uppercase tracking-wider">Total Royalty</p>
+                <p className="text-3xl font-bold text-purple-400 mt-1">
+                  {(parseFloat(royaltyForm.royaltyPerNft || 0) * parseInt(royaltyForm.totalNfts || 0)).toFixed(1)}%
+                </p>
+                <p className="text-xs text-surface-500 mt-1">
+                  {royaltyForm.totalNfts} NFTs x {royaltyForm.royaltyPerNft}% each
                 </p>
               </div>
             </div>
@@ -404,7 +546,7 @@ export default function Dashboard() {
           <button
             onClick={handleCreateRoyaltyPool}
             disabled={creatingPool}
-            className="mt-6 w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-surface-700 disabled:to-surface-700 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
+            className="mt-6 w-full py-3.5 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 disabled:from-surface-700 disabled:to-surface-700 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
           >
             {creatingPool ? (
               <>
@@ -433,8 +575,9 @@ export default function Dashboard() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-green-400">
-                      {parseFloat(pool.total_distributed_xrp || 0).toFixed(2)} XRP distributed
+                      {parseFloat(pool.total_distributed_xrp || 0).toFixed(2)} XRP
                     </p>
+                    <p className="text-xs text-surface-500">distributed</p>
                   </div>
                 </div>
               ))}
@@ -443,16 +586,15 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Distribute Income */}
-      {activeSection === 'distribute' && (
-        <div className="bg-surface-900 border border-surface-800 rounded-2xl p-8">
-          <h2 className="text-xl font-bold flex items-center gap-2 mb-6">
+      {/* ── Step 2: Distribute Income ───────────────────────────────── */}
+      {currentStep === 2 && (
+        <div className="bg-surface-900 border border-surface-800 rounded-2xl p-6 sm:p-8">
+          <h2 className="text-xl font-bold flex items-center gap-2 mb-2">
             <Send className="w-5 h-5 text-green-400" />
             Distribute Royalty Income
           </h2>
           <p className="text-surface-400 text-sm mb-6">
-            Send XRP from your wallet to all current holders of a royalty pool,
-            proportionally based on their ownership.
+            Send XRP to all current holders of a royalty pool, proportionally based on their ownership.
           </p>
 
           {royaltyPools.length === 0 ? (
@@ -460,7 +602,7 @@ export default function Dashboard() {
               <Music className="w-12 h-12 text-surface-700 mx-auto mb-3" />
               <p className="text-surface-400">No royalty pools yet</p>
               <button
-                onClick={() => setActiveSection('royalty')}
+                onClick={() => setCurrentStep(1)}
                 className="mt-3 text-primary-400 hover:underline text-sm"
               >
                 Create a Royalty Pool first
@@ -468,67 +610,102 @@ export default function Dashboard() {
             </div>
           ) : (
             <div className="space-y-4">
+              {/* Pool Selection as Cards */}
               <div>
-                <label className="block text-sm font-medium mb-2">Select Pool</label>
-                <select
-                  value={distributePoolId}
-                  onChange={(e) => setDistributePoolId(e.target.value)}
-                  className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                >
-                  <option value="">Choose a pool...</option>
+                <label className="block text-sm font-medium mb-3">Select Pool</label>
+                <div className="grid sm:grid-cols-2 gap-3">
                   {royaltyPools.map((pool) => (
-                    <option key={pool.id} value={pool.id}>
-                      {pool.name} ({pool.total_nfts} NFTs)
-                    </option>
+                    <button
+                      key={pool.id}
+                      onClick={() => setDistributePoolId(pool.id)}
+                      className={`text-left p-4 rounded-xl border transition-all ${
+                        distributePoolId === pool.id
+                          ? 'bg-green-900/20 border-green-700 ring-2 ring-green-600/30'
+                          : 'bg-surface-800 border-surface-700 hover:border-surface-600'
+                      }`}
+                    >
+                      <p className="font-medium">{pool.name}</p>
+                      <p className="text-xs text-surface-500 mt-1">
+                        {pool.total_nfts} NFTs &middot; {parseFloat(pool.total_distributed_xrp || 0).toFixed(2)} XRP distributed
+                      </p>
+                    </button>
                   ))}
-                </select>
+                </div>
               </div>
 
               <div>
-                <label className="block text-sm font-medium mb-2">Amount to Distribute (XRP)</label>
-                <input
-                  type="number"
-                  value={distributeAmount}
-                  onChange={(e) => setDistributeAmount(e.target.value)}
-                  placeholder="e.g., 50"
-                  min="0.01"
-                  step="0.01"
-                  className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-                />
+                <label className="block text-sm font-medium mb-2">Amount to Distribute</label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    value={distributeAmount}
+                    onChange={(e) => setDistributeAmount(e.target.value)}
+                    placeholder="e.g., 50"
+                    min="0.01"
+                    step="0.01"
+                    className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  />
+                  <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-surface-500 font-semibold">XRP</span>
+                </div>
+                {distributeAmount && distributePoolId && (
+                  <p className="text-xs text-surface-500 mt-1.5">
+                    Each holder receives proportional share based on NFTs owned
+                  </p>
+                )}
               </div>
 
-              <button
-                onClick={handleDistribute}
-                disabled={distributing || !distributePoolId || !distributeAmount}
-                className="w-full py-3 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-surface-700 disabled:to-surface-700 rounded-xl font-semibold transition-all flex items-center justify-center gap-2"
-              >
-                {distributing ? (
-                  <>
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                    Distributing to holders...
-                  </>
-                ) : (
-                  <>
-                    <Send className="w-4 h-4" />
-                    Distribute to Holders
-                  </>
-                )}
-              </button>
+              {!showDistributeConfirm ? (
+                <button
+                  onClick={() => {
+                    if (!distributePoolId || !distributeAmount) {
+                      toast({ type: 'error', message: 'Select a pool and enter an amount' });
+                      return;
+                    }
+                    setShowDistributeConfirm(true);
+                  }}
+                  disabled={!distributePoolId || !distributeAmount}
+                  className="w-full py-3.5 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-500 hover:to-emerald-500 disabled:from-surface-700 disabled:to-surface-700 rounded-xl font-semibold transition-all flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
+                  <Send className="w-4 h-4" />
+                  Review Distribution
+                </button>
+              ) : (
+                <div className="bg-green-900/10 border border-green-800/40 rounded-xl p-5 space-y-4">
+                  <p className="text-sm font-semibold text-green-400">Confirm Distribution</p>
+                  <p className="text-sm text-surface-300">
+                    You are about to distribute <span className="font-bold text-white">{distributeAmount} XRP</span> to
+                    holders of <span className="font-bold text-white">{royaltyPools.find(p => p.id === distributePoolId)?.name}</span>.
+                    This action cannot be undone.
+                  </p>
+                  <div className="flex gap-3">
+                    <button
+                      onClick={handleDistribute}
+                      disabled={distributing}
+                      className="flex-1 py-3 bg-green-600 hover:bg-green-500 disabled:bg-surface-700 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
+                    >
+                      {distributing ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" />
+                          Sending...
+                        </>
+                      ) : (
+                        <>
+                          <Send className="w-4 h-4" />
+                          Confirm & Send
+                        </>
+                      )}
+                    </button>
+                    <button
+                      onClick={() => setShowDistributeConfirm(false)}
+                      className="px-6 py-3 bg-surface-800 hover:bg-surface-700 rounded-xl text-sm transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
-        </div>
-      )}
-
-      {/* Messages */}
-      {error && (
-        <div className="p-3 bg-red-900/20 border border-red-800 rounded-xl text-sm text-red-400 flex items-start gap-2">
-          <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-          {error}
-        </div>
-      )}
-      {success && (
-        <div className="p-3 bg-green-900/20 border border-green-800 rounded-xl text-sm text-green-400">
-          {success}
         </div>
       )}
 
