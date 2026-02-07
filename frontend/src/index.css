@@ -237,3 +237,14 @@ body {
 .animate-toast-in {
   animation: toastIn 0.3s ease-out forwards;
 }
+
+/* Hide number input spinners (XRP Min/Max) */
+.input-no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.input-no-spinner::-webkit-outer-spin-button,
+.input-no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}

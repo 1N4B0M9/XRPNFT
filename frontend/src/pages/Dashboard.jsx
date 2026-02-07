@@ -104,10 +104,9 @@ export default function Dashboard() {
         api.getRoyaltyPools(),
         api.getBalance(wallet.address),
       ]);
-      setMyNFTs(nftRes.data.nfts);
-      setRoyaltyPools(
-        poolsRes.data.pools.filter((p) => p.creator_address === wallet.address)
-      );
+      setMyNFTs(Array.isArray(nftRes.data?.nfts) ? nftRes.data.nfts : []);
+      const pools = Array.isArray(poolsRes.data?.pools) ? poolsRes.data.pools : [];
+      setRoyaltyPools(pools.filter((p) => p.creator_address === wallet.address));
       setBalance(balRes.data.balance);
     } catch (err) {
       console.error('Failed to load creator data:', err);
@@ -455,7 +454,7 @@ export default function Dashboard() {
                 </div>
               </div>
             {/* ── File Upload ── */}
-            <div className="sm:col-span-2">
+            <div>
               <label className="block text-sm font-medium mb-2">
                 <Upload className="w-4 h-4 inline mr-1" />
                 Upload Content (image, 3D model, texture, etc.)
@@ -493,7 +492,7 @@ export default function Dashboard() {
             </div>
 
             {/* ── Properties (Game Integration) ── */}
-            <div className="sm:col-span-2">
+            <div>
               <label className="block text-sm font-medium mb-2">
                 <Settings2 className="w-4 h-4 inline mr-1" />
                 Properties (for game/app integration)
@@ -703,20 +702,20 @@ export default function Dashboard() {
           </button>
 
           {/* Existing Pools */}
-          {royaltyPools.length > 0 && (
+          {Array.isArray(royaltyPools) && royaltyPools.length > 0 && (
             <div className="mt-8 space-y-3">
               <h3 className="text-lg font-semibold">Your Royalty Pools</h3>
-              {royaltyPools.map((pool) => (
-                <div key={pool.id} className="bg-surface-800 rounded-xl p-4 flex items-center justify-between">
+              {royaltyPools.map((pool, idx) => (
+                <div key={pool?.id ?? idx} className="bg-surface-800 rounded-xl p-4 flex items-center justify-between">
                   <div>
-                    <p className="font-medium">{pool.name}</p>
+                    <p className="font-medium">{pool?.name ?? 'Unnamed'}</p>
                     <p className="text-xs text-surface-500 mt-1">
-                      {pool.total_nfts} NFTs @ {pool.royalty_per_nft}% each
+                      {pool?.total_nfts ?? 0} NFTs @ {pool?.royalty_per_nft ?? 0}% each
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-green-400">
-                      {parseFloat(pool.total_distributed_xrp || 0).toFixed(2)} XRP
+                      {parseFloat(pool?.total_distributed_xrp ?? 0).toFixed(2)} XRP
                     </p>
                     <p className="text-xs text-surface-500">distributed</p>
                   </div>
@@ -738,11 +737,12 @@ export default function Dashboard() {
             Send XRP to all current holders of a royalty pool, proportionally based on their ownership.
           </p>
 
-          {royaltyPools.length === 0 ? (
+          {(royaltyPools || []).length === 0 ? (
             <div className="text-center py-8">
               <Music className="w-12 h-12 text-surface-700 mx-auto mb-3" />
               <p className="text-surface-400">No royalty pools yet</p>
               <button
+                type="button"
                 onClick={() => setCurrentStep(1)}
                 className="mt-3 text-primary-400 hover:underline text-sm"
               >
@@ -755,22 +755,26 @@ export default function Dashboard() {
               <div>
                 <label className="block text-sm font-medium mb-3">Select Pool</label>
                 <div className="grid sm:grid-cols-2 gap-3">
-                  {royaltyPools.map((pool) => (
-                    <button
-                      key={pool.id}
-                      onClick={() => setDistributePoolId(pool.id)}
-                      className={`text-left p-4 rounded-xl border transition-all ${
-                        distributePoolId === pool.id
-                          ? 'bg-green-900/20 border-green-700 ring-2 ring-green-600/30'
-                          : 'bg-surface-800 border-surface-700 hover:border-surface-600'
-                      }`}
-                    >
-                      <p className="font-medium">{pool.name}</p>
-                      <p className="text-xs text-surface-500 mt-1">
-                        {pool.total_nfts} NFTs &middot; {parseFloat(pool.total_distributed_xrp || 0).toFixed(2)} XRP distributed
-                      </p>
-                    </button>
-                  ))}
+                  {(royaltyPools || []).map((pool, idx) => {
+                    const poolId = pool?.id != null ? pool.id : '';
+                    return (
+                      <button
+                        key={pool?.id ?? idx}
+                        type="button"
+                        onClick={() => setDistributePoolId(poolId)}
+                        className={`text-left p-4 rounded-xl border transition-all ${
+                          distributePoolId === poolId
+                            ? 'bg-green-900/20 border-green-700 ring-2 ring-green-600/30'
+                            : 'bg-surface-800 border-surface-700 hover:border-surface-600'
+                        }`}
+                      >
+                        <p className="font-medium">{pool?.name ?? 'Unnamed'}</p>
+                        <p className="text-xs text-surface-500 mt-1">
+                          {pool?.total_nfts ?? 0} NFTs &middot; {parseFloat(pool?.total_distributed_xrp ?? 0).toFixed(2)} XRP distributed
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
 
@@ -815,7 +819,7 @@ export default function Dashboard() {
                   <p className="text-sm font-semibold text-green-400">Confirm Distribution</p>
                   <p className="text-sm text-surface-300">
                     You are about to distribute <span className="font-bold text-white">{distributeAmount} XRP</span> to
-                    holders of <span className="font-bold text-white">{royaltyPools.find(p => p.id === distributePoolId)?.name}</span>.
+                    holders of <span className="font-bold text-white">{(Array.isArray(royaltyPools) && royaltyPools.find(p => p?.id === distributePoolId))?.name ?? 'this pool'}</span>.
                     This action cannot be undone.
                   </p>
                   <div className="flex gap-3">

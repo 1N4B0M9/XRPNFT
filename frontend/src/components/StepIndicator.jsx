@@ -9,8 +9,9 @@ export default function StepIndicator({ steps, currentStep, onStepClick }) {
           <div key={step.id} className="flex items-center flex-1 last:flex-none">
             {/* Step circle + label */}
             <button
+              type="button"
               onClick={() => onStepClick?.(idx)}
-              className="flex items-center gap-2.5 shrink-0 transition-all cursor-pointer group"
+              className="flex items-center gap-2.5 shrink-0 transition-all cursor-pointer group rounded-lg px-1 py-0.5 -mx-1 -my-0.5 hover:bg-surface-800/50"
             >
               <div
                 className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 transition-all duration-300 ${

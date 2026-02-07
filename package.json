@@ -8,7 +8,8 @@
     "dev:frontend": "cd frontend && npm run dev",
     "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
     "install:all": "npm install && cd backend && npm install && cd ../frontend && npm install",
-    "db:init": "cd backend && node src/db/init.js"
+    "db:init": "cd backend && node src/db/init.js",
+    "db:reset": "cd backend && node scripts/reset-db.js && npm run db:init"
   },
   "devDependencies": {
     "concurrently": "^9.1.0"

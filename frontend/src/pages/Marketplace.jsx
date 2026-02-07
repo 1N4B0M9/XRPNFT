@@ -3,6 +3,7 @@ import { ShoppingBag, Search, SlidersHorizontal, X } from 'lucide-react';
 import * as api from '../services/api';
 import NFTCard from '../components/NFTCard';
 import { SkeletonMarketplace } from '../components/Skeleton';
+import { ContainerToggle, CellToggle } from '../components/ui/animated-toggle-layout';
 
 export default function Marketplace() {
   const [nfts, setNfts] = useState([]);
@@ -58,22 +59,8 @@ export default function Marketplace() {
 
   return (
     <div className="animate-fade-in">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-        <div>
-          <h1 className="text-3xl font-bold flex items-center gap-3">
-            <ShoppingBag className="w-8 h-8 text-primary-400" />
-            Marketplace
-          </h1>
-          <p className="text-surface-400 mt-1">Browse and purchase digital asset NFTs</p>
-        </div>
-        <div className="text-sm text-surface-500">
-          {nfts.length} NFT{nfts.length !== 1 ? 's' : ''} available
-        </div>
-      </div>
-
-      {/* Search Bar */}
-      <div className="relative mb-4">
+      {/* Search Bar - first at top */}
+      <div className="relative mb-3">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-500" />
         <input
           type="text"
@@ -84,12 +71,20 @@ export default function Marketplace() {
         />
         {searchText && (
           <button
+            type="button"
             onClick={() => { setSearchText(''); setDebouncedSearch(''); }}
             className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-surface-500 hover:text-white transition-colors"
           >
             <X className="w-4 h-4" />
           </button>
         )}
+      </div>
+
+      {/* X NFTs available - next row, right-aligned */}
+      <div className="flex justify-end mb-4">
+        <span className="text-sm text-surface-500">
+          {nfts.length} NFT{nfts.length !== 1 ? 's' : ''} available
+        </span>
       </div>
 
       {/* Filters Row */}
@@ -126,24 +121,24 @@ export default function Marketplace() {
           </select>
         </div>
 
-        {/* Price Range */}
-        <div className="flex items-center gap-2 bg-surface-900 border border-surface-800 rounded-xl px-3 py-1.5">
-          <span className="text-xs text-surface-500">XRP</span>
+        {/* Price Range - vertical bar between Min/Max, single rounded container */}
+        <div className="flex items-center bg-surface-900 border border-surface-800 rounded-xl px-3 py-1.5">
+          <span className="text-xs text-surface-500 mr-2">XRP</span>
           <input
             type="number"
             value={filters.minPrice}
             onChange={(e) => setFilters({ ...filters, minPrice: e.target.value })}
             placeholder="Min"
-            className="w-16 bg-transparent text-sm focus:outline-none placeholder-surface-600 text-center"
+            className="input-no-spinner w-16 bg-transparent text-sm focus:outline-none placeholder-surface-600 text-center"
             min="0"
           />
-          <span className="text-surface-600">-</span>
+          <div className="w-px h-5 bg-surface-600 shrink-0 mx-1" />
           <input
             type="number"
             value={filters.maxPrice}
             onChange={(e) => setFilters({ ...filters, maxPrice: e.target.value })}
             placeholder="Max"
-            className="w-16 bg-transparent text-sm focus:outline-none placeholder-surface-600 text-center"
+            className="input-no-spinner w-16 bg-transparent text-sm focus:outline-none placeholder-surface-600 text-center"
             min="0"
           />
         </div>
@@ -183,11 +178,16 @@ export default function Marketplace() {
           )}
         </div>
       ) : (
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <ContainerToggle defaultMode={2} className="w-full">
           {nfts.map((nft) => (
-            <NFTCard key={nft.id} nft={nft} />
+            <CellToggle
+              key={nft.id}
+              className="overflow-hidden rounded-2xl"
+            >
+              <NFTCard nft={nft} />
+            </CellToggle>
           ))}
-        </div>
+        </ContainerToggle>
       )}
     </div>
   );

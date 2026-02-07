@@ -8,9 +8,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@radix-ui/react-slot": "^1.1.0",
     "axios": "^1.7.9",
+    "class-variance-authority": "^0.7.0",
     "embla-carousel-react": "^8.5.2",
     "lucide-react": "^0.469.0",
+    "motion": "^11.15.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
     "react-router-dom": "^7.1.1",
