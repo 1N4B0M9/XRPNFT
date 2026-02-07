@@ -1,15 +1,18 @@
 import { useState, useEffect, useRef } from 'react';
-import { ShoppingBag, Search, SlidersHorizontal, X } from 'lucide-react';
+import { ShoppingBag, Search, SlidersHorizontal, X, ChevronLeft, ChevronRight } from 'lucide-react';
 import * as api from '../services/api';
 import NFTCard from '../components/NFTCard';
 import { SkeletonMarketplace } from '../components/Skeleton';
 import { ContainerToggle, CellToggle } from '../components/ui/animated-toggle-layout';
+
+const PAGE_SIZE = 8;
 
 export default function Marketplace() {
   const [nfts, setNfts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchText, setSearchText] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({
     assetType: '',
     sort: 'newest',
@@ -31,6 +34,10 @@ export default function Marketplace() {
     loadNFTs();
   }, [filters, debouncedSearch]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filters, debouncedSearch]);
+
   const loadNFTs = async () => {
     setLoading(true);
     try {
@@ -50,6 +57,10 @@ export default function Marketplace() {
   };
 
   const hasActiveFilters = searchText || filters.assetType || filters.minPrice || filters.maxPrice;
+  const totalPages = Math.max(1, Math.ceil(nfts.length / PAGE_SIZE));
+  const pageStart = (currentPage - 1) * PAGE_SIZE;
+  const pageEnd = Math.min(currentPage * PAGE_SIZE, nfts.length);
+  const nftsOnPage = nfts.slice(pageStart, pageEnd);
 
   const clearFilters = () => {
     setSearchText('');
@@ -60,7 +71,7 @@ export default function Marketplace() {
   return (
     <div className="animate-fade-in">
       {/* Search Bar - first at top */}
-      <div className="relative mb-3">
+      <div className="relative mb-1">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-surface-500" />
         <input
           type="text"
@@ -80,15 +91,20 @@ export default function Marketplace() {
         )}
       </div>
 
-      {/* X NFTs available - next row, right-aligned */}
-      <div className="flex justify-end mb-4">
+      {/* Count and pagination info - next row, right-aligned */}
+      <div className="flex justify-end items-center gap-4 mb-1">
         <span className="text-sm text-surface-500">
           {nfts.length} NFT{nfts.length !== 1 ? 's' : ''} available
         </span>
+        {nfts.length > PAGE_SIZE && (
+          <span className="text-sm text-surface-500">
+            Showing {pageStart + 1}&ndash;{pageEnd} &middot; Page {currentPage} of {totalPages}
+          </span>
+        )}
       </div>
 
-      {/* Filters Row */}
-      <div className="flex flex-wrap items-center gap-3 mb-6">
+      {/* Filters Row - small gap below search */}
+      <div className="flex flex-wrap items-center gap-3 mb-4">
         <div className="flex items-center gap-2 bg-surface-900 border border-surface-800 rounded-xl px-4 py-2">
           <SlidersHorizontal className="w-4 h-4 text-surface-500" />
           <select
@@ -178,16 +194,43 @@ export default function Marketplace() {
           )}
         </div>
       ) : (
-        <ContainerToggle defaultMode={2} className="w-full">
-          {nfts.map((nft) => (
-            <CellToggle
-              key={nft.id}
-              className="overflow-hidden rounded-2xl"
-            >
-              <NFTCard nft={nft} />
-            </CellToggle>
-          ))}
-        </ContainerToggle>
+        <>
+          <ContainerToggle defaultMode={2} className="w-full">
+            {nftsOnPage.map((nft) => (
+              <CellToggle
+                key={nft.id}
+                className="overflow-hidden rounded-lg"
+              >
+                <NFTCard nft={nft} />
+              </CellToggle>
+            ))}
+          </ContainerToggle>
+          {nfts.length > PAGE_SIZE && (
+            <div className="mt-6 flex items-center justify-center gap-2">
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="p-2 rounded-xl border border-surface-700 bg-surface-900 text-surface-400 hover:text-white hover:bg-surface-800 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                aria-label="Previous page"
+              >
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <span className="text-sm text-surface-500 px-2">
+                Page {currentPage} of {totalPages}
+              </span>
+              <button
+                type="button"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="p-2 rounded-xl border border-surface-700 bg-surface-900 text-surface-400 hover:text-white hover:bg-surface-800 disabled:opacity-40 disabled:pointer-events-none transition-colors"
+                aria-label="Next page"
+              >
+                <ChevronRight className="w-5 h-5" />
+              </button>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

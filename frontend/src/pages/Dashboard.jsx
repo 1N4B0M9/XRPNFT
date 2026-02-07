@@ -423,7 +423,7 @@ export default function Dashboard() {
                       }}
                       min="0.01"
                       step="0.1"
-                      className={`w-full bg-surface-800 border rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
+                      className={`input-no-spinner w-full bg-surface-800 border rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 ${
                         mintErrors.listPriceXrp ? 'border-red-600' : 'border-surface-700'
                       }`}
                     />
@@ -476,7 +476,7 @@ export default function Dashboard() {
                     }}
                     min="0"
                     step="0.1"
-                    className={`w-full bg-surface-800 border rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
+                    className={`input-no-spinner w-full bg-surface-800 border rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-amber-500 ${
                       mintErrors.backingXrp ? 'border-red-600' : 'border-surface-700'
                     }`}
                   />
@@ -702,7 +702,7 @@ export default function Dashboard() {
                 max="100"
                 value={royaltyForm.totalNfts}
                 onChange={(e) => setRoyaltyForm({ ...royaltyForm, totalNfts: e.target.value })}
-                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input-no-spinner w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -714,7 +714,7 @@ export default function Dashboard() {
                 step="0.001"
                 value={royaltyForm.royaltyPerNft}
                 onChange={(e) => setRoyaltyForm({ ...royaltyForm, royaltyPerNft: e.target.value })}
-                className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                className="input-no-spinner w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
               />
             </div>
 
@@ -725,7 +725,7 @@ export default function Dashboard() {
                   type="number"
                   value={royaltyForm.listPriceXrp}
                   onChange={(e) => setRoyaltyForm({ ...royaltyForm, listPriceXrp: e.target.value })}
-                  className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                  className="input-no-spinner w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-surface-500 font-semibold">XRP</span>
               </div>
@@ -850,7 +850,7 @@ export default function Dashboard() {
                     placeholder="e.g., 50"
                     min="0.01"
                     step="0.01"
-                    className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+                    className="input-no-spinner w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
                   />
                   <span className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-surface-500 font-semibold">XRP</span>
                 </div>
