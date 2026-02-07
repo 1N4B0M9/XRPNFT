@@ -7,12 +7,14 @@ const router = Router();
 // ─── Browse Listed NFTs ──────────────────────────────────────────
 router.get('/', async (req, res) => {
   try {
-    const { assetType, minBacking, maxPrice, sort } = req.query;
+    const { assetType, maxPrice, sort } = req.query;
 
     let query = `
-      SELECT n.*, c.name as company_name, c.verification_tier as company_tier
+      SELECT n.*, c.name as company_name, c.verification_tier as company_tier,
+             rp.name as royalty_pool_name
       FROM nfts n
       JOIN companies c ON n.company_id = c.id
+      LEFT JOIN royalty_pools rp ON n.royalty_pool_id = rp.id
       WHERE n.status = 'listed'
     `;
     const params = [];
@@ -20,11 +22,6 @@ router.get('/', async (req, res) => {
     if (assetType) {
       params.push(assetType);
       query += ` AND n.asset_type = $${params.length}`;
-    }
-
-    if (minBacking) {
-      params.push(parseFloat(minBacking));
-      query += ` AND n.backing_xrp >= $${params.length}`;
     }
 
     if (maxPrice) {
@@ -39,8 +36,11 @@ router.get('/', async (req, res) => {
       case 'price_desc':
         query += ' ORDER BY n.list_price_xrp DESC';
         break;
-      case 'backing_desc':
-        query += ' ORDER BY n.backing_xrp DESC';
+      case 'value_desc':
+        query += ' ORDER BY n.last_sale_price_xrp DESC';
+        break;
+      case 'most_traded':
+        query += ' ORDER BY n.sale_count DESC';
         break;
       default:
         query += ' ORDER BY n.created_at DESC';
@@ -59,9 +59,13 @@ router.get('/:id', async (req, res) => {
   try {
     const result = await pool.query(
       `SELECT n.*, c.name as company_name, c.verification_tier as company_tier,
-              c.wallet_address as company_wallet
+              c.wallet_address as company_wallet,
+              rp.name as royalty_pool_name, rp.id as pool_id,
+              rp.total_deposited_xrp as pool_total_deposited,
+              rp.total_distributed_xrp as pool_total_distributed
        FROM nfts n
        JOIN companies c ON n.company_id = c.id
+       LEFT JOIN royalty_pools rp ON n.royalty_pool_id = rp.id
        WHERE n.id = $1`,
       [req.params.id]
     );
@@ -70,15 +74,26 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'NFT not found' });
     }
 
-    // Get transaction history
+    // Get transaction history (local cache)
     const txResult = await pool.query(
       `SELECT * FROM transactions WHERE nft_id = $1 ORDER BY created_at DESC`,
       [req.params.id]
     );
 
+    // Get royalty payouts for this NFT if applicable
+    let royaltyPayouts = [];
+    if (result.rows[0].royalty_pool_id) {
+      const payoutsResult = await pool.query(
+        `SELECT * FROM royalty_payouts WHERE nft_id = $1 ORDER BY created_at DESC`,
+        [req.params.id]
+      );
+      royaltyPayouts = payoutsResult.rows;
+    }
+
     res.json({
       nft: result.rows[0],
       transactions: txResult.rows,
+      royaltyPayouts,
     });
   } catch (err) {
     console.error('Error fetching NFT detail:', err);
@@ -86,7 +101,46 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// ─── Purchase NFT ───────────────────────────────────────────────
+// ─── Get NFT Price History (On-Chain + Local) ────────────────────
+router.get('/:id/price-history', async (req, res) => {
+  try {
+    const nftResult = await pool.query('SELECT token_id FROM nfts WHERE id = $1', [req.params.id]);
+    if (nftResult.rows.length === 0) {
+      return res.status(404).json({ error: 'NFT not found' });
+    }
+
+    const tokenId = nftResult.rows[0].token_id;
+
+    // Try on-chain history first
+    let priceHistory = [];
+    if (tokenId) {
+      priceHistory = await xrplService.getNFTTransactionHistory(tokenId);
+    }
+
+    // Fallback to local DB if on-chain data unavailable
+    if (priceHistory.length === 0) {
+      const localTx = await pool.query(
+        `SELECT * FROM transactions WHERE nft_id = $1 AND tx_type = 'purchase' ORDER BY created_at ASC`,
+        [req.params.id]
+      );
+      priceHistory = localTx.rows.map((tx, idx) => ({
+        date: tx.created_at,
+        price: parseFloat(tx.amount_xrp),
+        buyer: tx.from_address,
+        seller: tx.to_address,
+        txHash: tx.tx_hash,
+        saleNumber: idx + 1,
+      }));
+    }
+
+    res.json({ priceHistory });
+  } catch (err) {
+    console.error('Error fetching price history:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Purchase NFT (Direct Sale - XRP goes to seller) ────────────
 router.post('/:id/buy', async (req, res) => {
   try {
     const { buyerWalletAddress, buyerWalletSeed } = req.body;
@@ -96,7 +150,7 @@ router.post('/:id/buy', async (req, res) => {
       return res.status(400).json({ error: 'Buyer wallet info required' });
     }
 
-    // Get NFT
+    // Get NFT with current owner info
     const nftResult = await pool.query(
       `SELECT n.*, c.wallet_address as company_wallet, c.wallet_seed as company_seed
        FROM nfts n JOIN companies c ON n.company_id = c.id
@@ -109,6 +163,18 @@ router.post('/:id/buy', async (req, res) => {
     }
 
     const nft = nftResult.rows[0];
+    const sellerAddress = nft.owner_address;
+    const saleNumber = (nft.sale_count || 0) + 1;
+    const previousPrice = nft.last_sale_price_xrp || 0;
+
+    // Build on-chain memo data for universal price history
+    const memoData = {
+      platform: 'DigitalAssetTartan',
+      saleNumber,
+      salePrice: String(nft.list_price_xrp),
+      currency: 'XRP',
+      previousPrice: String(previousPrice),
+    };
 
     // Get sell offers for this NFT
     let sellOffers = [];
@@ -119,28 +185,33 @@ router.post('/:id/buy', async (req, res) => {
     let purchaseTx;
 
     if (sellOffers.length > 0) {
-      // Accept the sell offer on XRPL
-      purchaseTx = await xrplService.acceptSellOffer(buyerWalletSeed, sellOffers[0].nft_offer_index);
+      // Accept the sell offer on XRPL (XRP goes to seller automatically)
+      purchaseTx = await xrplService.acceptSellOffer(
+        buyerWalletSeed,
+        sellOffers[0].nft_offer_index,
+        memoData
+      );
     } else {
-      // Fallback: direct payment for demo
+      // Fallback: direct payment to current owner
       purchaseTx = await xrplService.sendPayment(
         buyerWalletSeed,
-        nft.company_wallet,
+        sellerAddress,
         nft.list_price_xrp
       );
     }
 
-    // Update NFT ownership
+    // Update NFT ownership, price, and sale count
     await pool.query(
-      `UPDATE nfts SET status = 'owned', owner_address = $1, updated_at = NOW() WHERE id = $2`,
-      [buyerWalletAddress, nftId]
+      `UPDATE nfts SET status = 'owned', owner_address = $1, last_sale_price_xrp = $2,
+       sale_count = $3, updated_at = NOW() WHERE id = $4`,
+      [buyerWalletAddress, nft.list_price_xrp, saleNumber, nftId]
     );
 
-    // Record transaction
+    // Record transaction (from=buyer who paid, to=seller who received)
     await pool.query(
       `INSERT INTO transactions (nft_id, tx_type, from_address, to_address, amount_xrp, tx_hash, status)
        VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-      [nftId, 'purchase', buyerWalletAddress, nft.company_wallet, nft.list_price_xrp, purchaseTx.txHash, 'confirmed']
+      [nftId, 'purchase', buyerWalletAddress, sellerAddress, nft.list_price_xrp, purchaseTx.txHash, 'confirmed']
     );
 
     // Update or create user record
@@ -148,7 +219,7 @@ router.post('/:id/buy', async (req, res) => {
       `INSERT INTO users (wallet_address, wallet_seed, display_name)
        VALUES ($1, $2, $3)
        ON CONFLICT (wallet_address) DO NOTHING`,
-      [buyerWalletAddress, buyerWalletSeed, `Buyer_${buyerWalletAddress.slice(-6)}`]
+      [buyerWalletAddress, buyerWalletSeed, `User_${buyerWalletAddress.slice(-6)}`]
     );
 
     res.json({
@@ -158,10 +229,76 @@ router.post('/:id/buy', async (req, res) => {
         id: nftId,
         tokenId: nft.token_id,
         owner: buyerWalletAddress,
+        salePrice: nft.list_price_xrp,
+        saleNumber,
       },
     });
   } catch (err) {
     console.error('Error purchasing NFT:', err);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── Relist NFT (Owner sets new price) ──────────────────────────
+router.post('/:id/relist', async (req, res) => {
+  try {
+    const { ownerWalletAddress, ownerWalletSeed, listPriceXrp } = req.body;
+    const nftId = req.params.id;
+
+    if (!ownerWalletAddress || !ownerWalletSeed || !listPriceXrp) {
+      return res.status(400).json({ error: 'Owner wallet info and list price required' });
+    }
+
+    const listPrice = parseFloat(listPriceXrp);
+    if (listPrice <= 0) {
+      return res.status(400).json({ error: 'List price must be greater than 0' });
+    }
+
+    // Get NFT and verify ownership
+    const nftResult = await pool.query(
+      `SELECT * FROM nfts WHERE id = $1 AND owner_address = $2 AND status = 'owned'`,
+      [nftId, ownerWalletAddress]
+    );
+
+    if (nftResult.rows.length === 0) {
+      return res.status(404).json({ error: 'NFT not found or you are not the owner' });
+    }
+
+    const nft = nftResult.rows[0];
+
+    // Create sell offer on XRPL
+    let sellOffer = null;
+    if (nft.token_id) {
+      sellOffer = await xrplService.createSellOffer(
+        ownerWalletSeed,
+        nft.token_id,
+        listPrice
+      );
+    }
+
+    // Update NFT status and price
+    await pool.query(
+      `UPDATE nfts SET status = 'listed', list_price_xrp = $1, updated_at = NOW() WHERE id = $2`,
+      [listPrice, nftId]
+    );
+
+    // Record relist transaction
+    await pool.query(
+      `INSERT INTO transactions (nft_id, tx_type, from_address, amount_xrp, tx_hash, status)
+       VALUES ($1, $2, $3, $4, $5, $6)`,
+      [nftId, 'relist', ownerWalletAddress, listPrice, sellOffer?.txHash || null, 'confirmed']
+    );
+
+    res.json({
+      message: 'NFT relisted successfully',
+      nft: {
+        id: nftId,
+        listPrice,
+        sellOfferIndex: sellOffer?.offerIndex || null,
+      },
+    });
+  } catch (err) {
+    console.error('Error relisting NFT:', err);
     res.status(500).json({ error: err.message });
   }
 });

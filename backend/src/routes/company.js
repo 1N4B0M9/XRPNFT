@@ -41,7 +41,7 @@ router.post('/register', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, description, wallet_address, xrp_balance, escrow_balance, verification_tier, created_at
+      `SELECT id, name, description, wallet_address, wallet_seed, xrp_balance, verification_tier, created_at
        FROM companies WHERE id = $1`,
       [req.params.id]
     );
@@ -54,7 +54,13 @@ router.get('/:id', async (req, res) => {
     const liveBalance = await xrplService.getBalance(result.rows[0].wallet_address);
     const company = { ...result.rows[0], live_xrp_balance: liveBalance };
 
-    res.json({ company });
+    // Get royalty pools for this company
+    const poolsResult = await pool.query(
+      `SELECT * FROM royalty_pools WHERE company_id = $1 ORDER BY created_at DESC`,
+      [req.params.id]
+    );
+
+    res.json({ company, royaltyPools: poolsResult.rows });
   } catch (err) {
     console.error('Error fetching company:', err);
     res.status(500).json({ error: err.message });
@@ -65,7 +71,7 @@ router.get('/:id', async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT id, name, description, wallet_address, xrp_balance, escrow_balance, verification_tier, created_at
+      `SELECT id, name, description, wallet_address, xrp_balance, verification_tier, created_at
        FROM companies ORDER BY created_at DESC`
     );
     res.json({ companies: result.rows });
@@ -75,14 +81,13 @@ router.get('/', async (req, res) => {
   }
 });
 
-// ─── Deposit XRP to Escrow & Mint NFTs ───────────────────────────
+// ─── Mint NFTs (Direct Sale - No Escrow) ─────────────────────────
 router.post('/:id/mint', async (req, res) => {
   try {
-    const { assetName, assetDescription, assetType, backingXrp, listPriceXrp, quantity } = req.body;
+    const { assetName, assetDescription, assetType, listPriceXrp, quantity } = req.body;
     const companyId = req.params.id;
     const qty = quantity || 1;
-    const backing = parseFloat(backingXrp) || 50;
-    const listPrice = parseFloat(listPriceXrp) || backing * 1.2;
+    const listPrice = parseFloat(listPriceXrp) || 50;
 
     // Get company
     const companyResult = await pool.query('SELECT * FROM companies WHERE id = $1', [companyId]);
@@ -97,33 +102,19 @@ router.post('/:id/mint', async (req, res) => {
       // 1. Build & pin metadata
       const metadata = ipfsService.buildNFTMetadata({
         name: assetName || `${company.name} Asset #${i + 1}`,
-        description: assetDescription || `Asset-backed NFT from ${company.name}`,
+        description: assetDescription || `Digital asset NFT from ${company.name}`,
         image: null,
-        assetType: assetType || 'electronics',
-        backingXrp: backing,
+        assetType: assetType || 'digital_asset',
+        backingXrp: 0,
         companyName: company.name,
         verificationTier: company.verification_tier,
       });
       const metadataUri = await ipfsService.pinMetadata(metadata);
 
-      // 2. Create escrow (company → company for demo; in production → protocol escrow)
-      let escrowData = null;
-      try {
-        escrowData = await xrplService.createEscrow(
-          company.wallet_seed,
-          backing,
-          company.wallet_address,
-          null
-        );
-      } catch (escrowErr) {
-        console.warn('Escrow creation skipped (testnet limitation):', escrowErr.message);
-        // Continue without escrow for demo
-      }
-
-      // 3. Mint NFT on XRPL
+      // 2. Mint NFT on XRPL
       const mintResult = await xrplService.mintNFT(company.wallet_seed, metadataUri);
 
-      // 4. Create sell offer
+      // 3. Create sell offer
       let sellOffer = null;
       if (mintResult.tokenId) {
         sellOffer = await xrplService.createSellOffer(
@@ -133,48 +124,43 @@ router.post('/:id/mint', async (req, res) => {
         );
       }
 
-      // 5. Store in database
+      // 4. Store in database
       const nftResult = await pool.query(
         `INSERT INTO nfts (token_id, company_id, asset_type, asset_name, asset_description,
-         metadata_uri, backing_xrp, list_price_xrp, escrow_sequence, status, owner_address, verification_tier)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+         metadata_uri, backing_xrp, list_price_xrp, last_sale_price_xrp, sale_count,
+         status, owner_address, verification_tier)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
          RETURNING *`,
         [
           mintResult.tokenId,
           companyId,
-          assetType || 'electronics',
+          assetType || 'digital_asset',
           assetName || `${company.name} Asset #${i + 1}`,
-          assetDescription || `Asset-backed NFT from ${company.name}`,
+          assetDescription || `Digital asset NFT from ${company.name}`,
           metadataUri,
-          backing,
+          0,
           listPrice,
-          escrowData?.sequence || null,
+          0,
+          0,
           'listed',
           company.wallet_address,
           company.verification_tier,
         ]
       );
 
-      // 6. Record transaction
+      // 5. Record transaction
       await pool.query(
         `INSERT INTO transactions (nft_id, tx_type, from_address, amount_xrp, tx_hash, status)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [nftResult.rows[0].id, 'mint', company.wallet_address, backing, mintResult.txHash, 'confirmed']
+        [nftResult.rows[0].id, 'mint', company.wallet_address, 0, mintResult.txHash, 'confirmed']
       );
 
       mintedNFTs.push({
         nft: nftResult.rows[0],
         mintTx: mintResult.txHash,
-        escrowTx: escrowData?.txHash || null,
         sellOfferIndex: sellOffer?.offerIndex || null,
       });
     }
-
-    // Update company escrow balance
-    await pool.query(
-      `UPDATE companies SET escrow_balance = escrow_balance + $1, updated_at = NOW() WHERE id = $2`,
-      [backing * qty, companyId]
-    );
 
     res.json({
       message: `Successfully minted ${qty} NFT(s)`,

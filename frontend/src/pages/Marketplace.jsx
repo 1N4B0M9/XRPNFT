@@ -40,7 +40,7 @@ export default function Marketplace() {
             <ShoppingBag className="w-8 h-8 text-primary-400" />
             Marketplace
           </h1>
-          <p className="text-surface-400 mt-1">Browse and purchase asset-backed NFTs</p>
+          <p className="text-surface-400 mt-1">Browse and purchase digital asset NFTs</p>
         </div>
         <div className="text-sm text-surface-500">
           {nfts.length} NFT{nfts.length !== 1 ? 's' : ''} available
@@ -57,10 +57,13 @@ export default function Marketplace() {
             className="bg-transparent text-sm focus:outline-none"
           >
             <option value="">All Types</option>
-            <option value="electronics">Electronics</option>
-            <option value="phones">Phones</option>
-            <option value="laptops">Laptops</option>
-            <option value="accessories">Accessories</option>
+            <option value="digital_asset">Digital Asset</option>
+            <option value="gaming">Gaming</option>
+            <option value="art">Art</option>
+            <option value="music">Music</option>
+            <option value="collectible">Collectible</option>
+            <option value="royalty">Royalty</option>
+            <option value="other">Other</option>
           </select>
         </div>
 
@@ -74,7 +77,8 @@ export default function Marketplace() {
             <option value="newest">Newest First</option>
             <option value="price_asc">Price: Low to High</option>
             <option value="price_desc">Price: High to Low</option>
-            <option value="backing_desc">Highest Backing</option>
+            <option value="value_desc">Highest Value</option>
+            <option value="most_traded">Most Traded</option>
           </select>
         </div>
 
@@ -94,7 +98,7 @@ export default function Marketplace() {
           <ShoppingBag className="w-16 h-16 text-surface-700 mx-auto mb-4" />
           <h3 className="text-xl font-semibold text-surface-400">No NFTs Listed</h3>
           <p className="text-surface-500 mt-2">
-            Be the first to mint and list asset-backed NFTs!
+            Be the first to mint and list digital asset NFTs!
           </p>
         </div>
       ) : (

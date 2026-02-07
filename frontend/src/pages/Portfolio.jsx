@@ -5,7 +5,7 @@ import {
   Briefcase,
   Coins,
   TrendingUp,
-  ArrowRightLeft,
+  DollarSign,
   RefreshCw,
   Wallet,
 } from 'lucide-react';
@@ -20,8 +20,8 @@ export default function Portfolio() {
   const navigate = useNavigate();
 
   const [portfolio, setPortfolio] = useState(null);
-  const [redemptions, setRedemptions] = useState([]);
   const [transactions, setTransactions] = useState([]);
+  const [royaltyEarnings, setRoyaltyEarnings] = useState({ earnings: [], totalEarnings: 0 });
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState('nfts');
 
@@ -33,14 +33,14 @@ export default function Portfolio() {
   const loadPortfolio = async () => {
     setLoading(true);
     try {
-      const [portRes, redemRes, txRes] = await Promise.all([
+      const [portRes, txRes, earningsRes] = await Promise.all([
         api.getPortfolio(wallet.address),
-        api.getRedemptions(wallet.address),
         api.getTransactions(wallet.address),
+        api.getRoyaltyEarnings(wallet.address).catch(() => ({ data: { earnings: [], totalEarnings: 0 } })),
       ]);
       setPortfolio(portRes.data);
-      setRedemptions(redemRes.data.redemptions);
       setTransactions(txRes.data.transactions);
+      setRoyaltyEarnings(earningsRes.data);
     } catch (err) {
       console.error('Failed to load portfolio:', err);
     } finally {
@@ -103,15 +103,15 @@ export default function Portfolio() {
             color: 'text-purple-400',
           },
           {
-            label: 'Total Backing',
-            value: `${(portfolio?.stats?.totalBackingValue || 0).toFixed(1)} XRP`,
+            label: 'Portfolio Value',
+            value: `${(portfolio?.stats?.totalPortfolioValue || 0).toFixed(1)} XRP`,
             icon: TrendingUp,
             color: 'text-green-400',
           },
           {
-            label: 'Redemptions',
-            value: redemptions.length,
-            icon: ArrowRightLeft,
+            label: 'Royalty Earnings',
+            value: `${(royaltyEarnings.totalEarnings || 0).toFixed(2)} XRP`,
+            icon: DollarSign,
             color: 'text-amber-400',
           },
         ].map(({ label, value, icon: Icon, color }) => (
@@ -127,7 +127,7 @@ export default function Portfolio() {
 
       {/* Tabs */}
       <div className="flex gap-2 border-b border-surface-800">
-        {['nfts', 'transactions', 'redemptions'].map((tab) => (
+        {['nfts', 'transactions', 'royalty earnings'].map((tab) => (
           <button
             key={tab}
             onClick={() => setActiveTab(tab)}
@@ -148,7 +148,7 @@ export default function Portfolio() {
           {portfolio?.nfts?.length > 0 ? (
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
               {portfolio.nfts.map((nft) => (
-                <NFTCard key={nft.id} nft={nft} />
+                <NFTCard key={nft.id} nft={nft} showRelist />
               ))}
             </div>
           ) : (
@@ -207,12 +207,12 @@ export default function Portfolio() {
         </div>
       )}
 
-      {activeTab === 'redemptions' && (
+      {activeTab === 'royalty earnings' && (
         <div>
-          {redemptions.length > 0 ? (
+          {royaltyEarnings.earnings.length > 0 ? (
             <div className="space-y-3">
-              {redemptions.map((r) => (
-                <div key={r.id} className="bg-surface-900 border border-surface-800 rounded-xl p-4 flex items-center justify-between">
+              {royaltyEarnings.earnings.map((e) => (
+                <div key={e.id} className="bg-surface-900 border border-surface-800 rounded-xl p-4 flex items-center justify-between">
                   <div>
                     <p className="font-medium">{r.asset_name}</p>
                     <div className="flex items-center gap-1.5 mt-1">
@@ -222,15 +222,23 @@ export default function Portfolio() {
                   </div>
                   <div className="text-right">
                     <p className="text-lg font-bold text-green-400">
-                      +{parseFloat(r.amount_xrp).toFixed(1)} XRP
+                      +{parseFloat(e.amount_xrp).toFixed(4)} XRP
                     </p>
-                    <StatusBadge status={r.status} />
+                    <p className="text-xs text-surface-500">
+                      {new Date(e.created_at).toLocaleDateString()}
+                    </p>
                   </div>
                 </div>
               ))}
             </div>
           ) : (
-            <p className="text-center py-12 text-surface-500">No redemptions yet</p>
+            <div className="text-center py-12">
+              <DollarSign className="w-12 h-12 text-surface-700 mx-auto mb-3" />
+              <p className="text-surface-400">No royalty earnings yet</p>
+              <p className="text-surface-500 text-sm mt-2">
+                Buy royalty NFTs to earn income when creators distribute royalties
+              </p>
+            </div>
           )}
         </div>
       )}

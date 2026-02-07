@@ -227,7 +227,7 @@ export async function createSellOffer(ownerSeed, tokenId, amountXrp, destination
   };
 }
 
-export async function acceptSellOffer(buyerSeed, sellOfferIndex) {
+export async function acceptSellOffer(buyerSeed, sellOfferIndex, memoData = null) {
   const c = await getClient();
   const wallet = xrpl.Wallet.fromSeed(buyerSeed);
 
@@ -236,6 +236,16 @@ export async function acceptSellOffer(buyerSeed, sellOfferIndex) {
     Account: wallet.address,
     NFTokenSellOffer: sellOfferIndex,
   };
+
+  // Add on-chain memo with sale data for universal price history
+  if (memoData) {
+    acceptTx.Memos = [{
+      Memo: {
+        MemoType: Buffer.from('application/json', 'utf8').toString('hex').toUpperCase(),
+        MemoData: Buffer.from(JSON.stringify(memoData), 'utf8').toString('hex').toUpperCase(),
+      },
+    }];
+  }
 
   const prepared = await c.autofill(acceptTx);
   const signed = wallet.sign(prepared);
@@ -311,4 +321,53 @@ export async function sendPayment(senderSeed, destinationAddress, amountXrp) {
     txHash: result.result.hash,
     status: result.result.meta.TransactionResult,
   };
+}
+
+// ─── NFT Price History (On-Chain) ────────────────────────────────
+export async function getNFTTransactionHistory(tokenId) {
+  const c = await getClient();
+  try {
+    // nft_history is available on Clio servers
+    const response = await c.request({
+      command: 'nft_history',
+      nft_id: tokenId,
+      limit: 100,
+    });
+
+    const transactions = response.result.transactions || [];
+    const priceHistory = [];
+
+    for (const entry of transactions) {
+      const tx = entry.tx || entry;
+      if (tx.TransactionType === 'NFTokenAcceptOffer') {
+        let salePrice = null;
+        let memoInfo = null;
+
+        // Extract our structured memo data
+        if (tx.Memos && tx.Memos.length > 0) {
+          try {
+            const memoHex = tx.Memos[0].Memo.MemoData;
+            const memoStr = Buffer.from(memoHex, 'hex').toString('utf8');
+            memoInfo = JSON.parse(memoStr);
+            salePrice = parseFloat(memoInfo.salePrice);
+          } catch {
+            // Memo wasn't our format — skip
+          }
+        }
+
+        priceHistory.push({
+          date: tx.date ? xrpl.rippleTimeToISOTime(tx.date) : new Date().toISOString(),
+          price: salePrice,
+          buyer: tx.Account,
+          txHash: tx.hash,
+          memo: memoInfo,
+        });
+      }
+    }
+
+    return priceHistory.reverse(); // oldest first
+  } catch (err) {
+    console.warn('nft_history query failed:', err.message);
+    return []; // Caller should fall back to local DB
+  }
 }

@@ -49,17 +49,30 @@ export async function pinMetadata(metadata) {
 /**
  * Build standard NFT metadata object.
  */
-export function buildNFTMetadata({ name, description, image, assetType, backingXrp, companyName, verificationTier }) {
+export function buildNFTMetadata({ name, description, image, assetType, backingXrp, companyName, verificationTier, royaltyPoolName, royaltyPercentage }) {
+  const attributes = [
+    { trait_type: 'Asset Type', value: assetType },
+    { trait_type: 'Company', value: companyName },
+    { trait_type: 'Verification Tier', value: verificationTier },
+  ];
+
+  if (backingXrp) {
+    attributes.push({ trait_type: 'Backing (XRP)', value: backingXrp });
+  }
+
+  if (royaltyPoolName) {
+    attributes.push({ trait_type: 'Royalty Pool', value: royaltyPoolName });
+  }
+
+  if (royaltyPercentage) {
+    attributes.push({ trait_type: 'Royalty Percentage', value: `${royaltyPercentage}%` });
+  }
+
   return {
     name,
     description,
     image: image || 'https://placehold.co/400x400/1a1a2e/e94560?text=DAT+NFT',
     external_url: 'https://digitalassettartan.io',
-    attributes: [
-      { trait_type: 'Asset Type', value: assetType },
-      { trait_type: 'Backing (XRP)', value: backingXrp },
-      { trait_type: 'Company', value: companyName },
-      { trait_type: 'Verification Tier', value: verificationTier },
-    ],
+    attributes,
   };
 }

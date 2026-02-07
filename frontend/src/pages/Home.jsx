@@ -25,8 +25,8 @@ export default function Home() {
           <span className="text-white">Powered by XRP</span>
         </h1>
         <p className="mt-6 text-lg text-surface-400 max-w-2xl mx-auto leading-relaxed">
-          Transform real-world assets into verifiable, tradeable NFTs backed by XRP escrow.
-          Mint, trade, and redeem with full transparency on the XRP Ledger.
+          Turn any digital asset into a tradeable NFT on the XRP Ledger.
+          Mint, buy, sell, and earn royalty income with full on-chain transparency.
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
@@ -51,7 +51,7 @@ export default function Home() {
             { label: 'Companies', value: stats.companies, color: 'text-blue-400' },
             { label: 'NFTs Minted', value: stats.nfts, color: 'text-purple-400' },
             { label: 'Transactions', value: stats.transactions, color: 'text-green-400' },
-            { label: 'Total Backing', value: `${stats.totalBackingXrp?.toFixed(0) || 0} XRP`, color: 'text-amber-400' },
+            { label: 'Trade Volume', value: `${stats.totalVolumeXrp?.toFixed(0) || 0} XRP`, color: 'text-amber-400' },
           ].map(({ label, value, color }) => (
             <div key={label} className="bg-surface-900 border border-surface-800 rounded-2xl p-6 text-center">
               <p className={`text-3xl font-bold ${color}`}>{value}</p>
@@ -68,20 +68,20 @@ export default function Home() {
           {[
             {
               icon: Building2,
-              title: 'Companies Mint',
-              desc: 'Deposit XRP into escrow and mint asset-backed NFTs representing real inventory.',
+              title: 'Creators Mint',
+              desc: 'Tokenize any digital asset as an NFT on XRPL. Set your price and list on the marketplace.',
               color: 'from-blue-600 to-blue-800',
             },
             {
               icon: ShoppingBag,
               title: 'Buyers Purchase',
-              desc: 'Browse the marketplace and purchase verified, asset-backed NFTs with XRP.',
+              desc: 'Browse the marketplace and buy digital asset NFTs. XRP goes directly to the seller.',
               color: 'from-purple-600 to-purple-800',
             },
             {
               icon: ArrowRightLeft,
-              title: 'Holders Redeem',
-              desc: 'Burn your NFT to release the XRP backing or request physical asset delivery.',
+              title: 'Trade & Earn',
+              desc: 'Relist NFTs at any price. Earn royalty income from revenue-sharing NFT pools.',
               color: 'from-green-600 to-green-800',
             },
           ].map(({ icon: Icon, title, desc, color }) => (
@@ -104,10 +104,10 @@ export default function Home() {
       {/* Features */}
       <section className="grid sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { icon: Shield, label: 'XRP-Backed', desc: 'Every NFT backed by escrowed XRP' },
+          { icon: Shield, label: 'On-Chain Value', desc: 'Price history stored on XRPL' },
           { icon: Zap, label: 'XRPL Speed', desc: '3-5 second settlement times' },
-          { icon: TrendingUp, label: 'Transparent', desc: 'On-chain verification of backing' },
-          { icon: Briefcase, label: 'Redeemable', desc: 'Burn NFT to release XRP anytime' },
+          { icon: TrendingUp, label: 'Royalty Pools', desc: 'Earn income from creator royalties' },
+          { icon: Briefcase, label: 'Free Market', desc: 'Relist at any price you choose' },
         ].map(({ icon: Icon, label, desc }) => (
           <div
             key={label}

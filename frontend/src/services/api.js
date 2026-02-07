@@ -34,18 +34,34 @@ export const getNFTDetail = (id) =>
 export const purchaseNFT = (nftId, buyerWalletAddress, buyerWalletSeed) =>
   api.post(`/marketplace/${nftId}/buy`, { buyerWalletAddress, buyerWalletSeed });
 
+export const relistNFT = (nftId, ownerWalletAddress, ownerWalletSeed, listPriceXrp) =>
+  api.post(`/marketplace/${nftId}/relist`, { ownerWalletAddress, ownerWalletSeed, listPriceXrp });
+
+export const getNFTPriceHistory = (nftId) =>
+  api.get(`/marketplace/${nftId}/price-history`);
+
 // ─── Holder / Portfolio ──────────────────────────────────────────
 export const getPortfolio = (address) =>
   api.get(`/holder/${address}/portfolio`);
 
-export const redeemNFT = (nftId, holderWalletAddress, holderWalletSeed) =>
-  api.post(`/holder/redeem/${nftId}`, { holderWalletAddress, holderWalletSeed });
-
-export const getRedemptions = (address) =>
-  api.get(`/holder/${address}/redemptions`);
-
 export const getTransactions = (address) =>
   api.get(`/holder/${address}/transactions`);
+
+export const getRoyaltyEarnings = (address) =>
+  api.get(`/holder/${address}/royalty-earnings`);
+
+// ─── Royalty ─────────────────────────────────────────────────────
+export const createRoyaltyPool = (companyId, data) =>
+  api.post(`/royalty/company/${companyId}/pool`, data);
+
+export const getRoyaltyPools = () =>
+  api.get('/royalty/pools');
+
+export const getRoyaltyPool = (poolId) =>
+  api.get(`/royalty/pool/${poolId}`);
+
+export const distributeRoyalty = (poolId, amountXrp, companySeed) =>
+  api.post(`/royalty/pool/${poolId}/distribute`, { amountXrp, companySeed });
 
 // ─── Wallet ──────────────────────────────────────────────────────
 export const createWallet = (displayName) =>
