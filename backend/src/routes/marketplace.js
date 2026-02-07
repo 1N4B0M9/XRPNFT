@@ -10,10 +10,10 @@ router.get('/', async (req, res) => {
     const { assetType, maxPrice, sort } = req.query;
 
     let query = `
-      SELECT n.*, c.name as company_name, c.verification_tier as company_tier,
+      SELECT n.*, u.display_name as creator_name,
              rp.name as royalty_pool_name
       FROM nfts n
-      JOIN companies c ON n.company_id = c.id
+      LEFT JOIN users u ON n.creator_address = u.wallet_address
       LEFT JOIN royalty_pools rp ON n.royalty_pool_id = rp.id
       WHERE n.status = 'listed'
     `;
@@ -58,13 +58,12 @@ router.get('/', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT n.*, c.name as company_name, c.verification_tier as company_tier,
-              c.wallet_address as company_wallet,
+      `SELECT n.*, u.display_name as creator_name,
               rp.name as royalty_pool_name, rp.id as pool_id,
               rp.total_deposited_xrp as pool_total_deposited,
               rp.total_distributed_xrp as pool_total_distributed
        FROM nfts n
-       JOIN companies c ON n.company_id = c.id
+       LEFT JOIN users u ON n.creator_address = u.wallet_address
        LEFT JOIN royalty_pools rp ON n.royalty_pool_id = rp.id
        WHERE n.id = $1`,
       [req.params.id]
@@ -150,11 +149,9 @@ router.post('/:id/buy', async (req, res) => {
       return res.status(400).json({ error: 'Buyer wallet info required' });
     }
 
-    // Get NFT with current owner info
+    // Get NFT
     const nftResult = await pool.query(
-      `SELECT n.*, c.wallet_address as company_wallet, c.wallet_seed as company_seed
-       FROM nfts n JOIN companies c ON n.company_id = c.id
-       WHERE n.id = $1 AND n.status = 'listed'`,
+      `SELECT * FROM nfts WHERE id = $1 AND status = 'listed'`,
       [nftId]
     );
 
@@ -203,7 +200,7 @@ router.post('/:id/buy', async (req, res) => {
     // Update NFT ownership, price, and sale count
     await pool.query(
       `UPDATE nfts SET status = 'owned', owner_address = $1, last_sale_price_xrp = $2,
-       sale_count = $3, updated_at = NOW() WHERE id = $4`,
+       sale_count = $3, updated_at = datetime('now') WHERE id = $4`,
       [buyerWalletAddress, nft.list_price_xrp, saleNumber, nftId]
     );
 
@@ -278,7 +275,7 @@ router.post('/:id/relist', async (req, res) => {
 
     // Update NFT status and price
     await pool.query(
-      `UPDATE nfts SET status = 'listed', list_price_xrp = $1, updated_at = NOW() WHERE id = $2`,
+      `UPDATE nfts SET status = 'listed', list_price_xrp = $1, updated_at = datetime('now') WHERE id = $2`,
       [listPrice, nftId]
     );
 

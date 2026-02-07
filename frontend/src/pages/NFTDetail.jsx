@@ -3,7 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import {
   ArrowLeft,
-  ShieldCheck,
   Coins,
   ArrowRightLeft,
   AlertCircle,
@@ -115,6 +114,7 @@ export default function NFTDetail() {
   const canRelist = wallet && nft.status === 'owned' && isOwner;
   const currentValue = nft.last_sale_price_xrp > 0 ? nft.last_sale_price_xrp : nft.list_price_xrp;
   const isRoyaltyNFT = !!nft.royalty_pool_id;
+  const creatorLabel = nft.creator_name || (nft.creator_address ? `${nft.creator_address.slice(0, 10)}...${nft.creator_address.slice(-4)}` : 'Unknown');
 
   // Format price history for chart
   const chartData = priceHistory
@@ -173,7 +173,6 @@ export default function NFTDetail() {
           <div>
             <div className="flex items-center gap-3 mb-2">
               <StatusBadge status={nft.status} />
-              <StatusBadge status={nft.verification_tier || 'basic'} />
               {isRoyaltyNFT && (
                 <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-purple-900/40 text-purple-400">
                   ROYALTY
@@ -181,7 +180,7 @@ export default function NFTDetail() {
               )}
             </div>
             <h1 className="text-3xl font-bold">{nft.asset_name}</h1>
-            <p className="text-surface-400 mt-2">by {nft.company_name}</p>
+            <p className="text-surface-400 mt-2">by {creatorLabel}</p>
           </div>
 
           {/* Description */}

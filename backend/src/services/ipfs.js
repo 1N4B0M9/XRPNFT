@@ -49,11 +49,10 @@ export async function pinMetadata(metadata) {
 /**
  * Build standard NFT metadata object.
  */
-export function buildNFTMetadata({ name, description, image, assetType, backingXrp, companyName, verificationTier, royaltyPoolName, royaltyPercentage }) {
+export function buildNFTMetadata({ name, description, image, assetType, backingXrp, creatorName, royaltyPoolName, royaltyPercentage }) {
   const attributes = [
     { trait_type: 'Asset Type', value: assetType },
-    { trait_type: 'Company', value: companyName },
-    { trait_type: 'Verification Tier', value: verificationTier },
+    { trait_type: 'Creator', value: creatorName },
   ];
 
   if (backingXrp) {

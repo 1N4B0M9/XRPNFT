@@ -6,13 +6,15 @@ import * as ipfsService from '../services/ipfs.js';
 const router = Router();
 
 // ─── Create Royalty Pool + Batch Mint NFTs ───────────────────────
-router.post('/company/:companyId/pool', async (req, res) => {
+router.post('/pool', async (req, res) => {
   try {
-    const { name, description, totalNfts, royaltyPerNft, listPriceXrp } = req.body;
-    const companyId = req.params.companyId;
+    const { walletAddress, name, description, totalNfts, royaltyPerNft, listPriceXrp } = req.body;
 
     if (!name || !totalNfts || !royaltyPerNft) {
       return res.status(400).json({ error: 'Name, total NFTs, and royalty per NFT are required' });
+    }
+    if (!walletAddress) {
+      return res.status(400).json({ error: 'Wallet address is required' });
     }
 
     const qty = parseInt(totalNfts);
@@ -27,19 +29,23 @@ router.post('/company/:companyId/pool', async (req, res) => {
       return res.status(400).json({ error: 'Total royalty percentage cannot exceed 100%' });
     }
 
-    // Get company
-    const companyResult = await pool.query('SELECT * FROM companies WHERE id = $1', [companyId]);
-    if (companyResult.rows.length === 0) {
-      return res.status(404).json({ error: 'Company not found' });
+    // Look up user's seed from the users table
+    const userResult = await pool.query(
+      'SELECT wallet_seed, display_name FROM users WHERE wallet_address = $1',
+      [walletAddress]
+    );
+    if (userResult.rows.length === 0 || !userResult.rows[0].wallet_seed) {
+      return res.status(404).json({ error: 'Wallet not found. Please create or import a wallet first.' });
     }
-    const company = companyResult.rows[0];
+    const userSeed = userResult.rows[0].wallet_seed;
+    const displayName = userResult.rows[0].display_name || walletAddress.slice(0, 8);
 
     // Create royalty pool
     const poolResult = await pool.query(
-      `INSERT INTO royalty_pools (company_id, name, description, total_nfts, royalty_per_nft)
+      `INSERT INTO royalty_pools (creator_address, name, description, total_nfts, royalty_per_nft)
        VALUES ($1, $2, $3, $4, $5)
        RETURNING *`,
-      [companyId, name, description || '', qty, percentage]
+      [walletAddress, name, description || '', qty, percentage]
     );
     const royaltyPool = poolResult.rows[0];
 
@@ -54,21 +60,20 @@ router.post('/company/:companyId/pool', async (req, res) => {
         image: null,
         assetType: 'royalty',
         backingXrp: 0,
-        companyName: company.name,
-        verificationTier: company.verification_tier,
+        creatorName: displayName,
         royaltyPoolName: name,
         royaltyPercentage: percentage,
       });
       const metadataUri = await ipfsService.pinMetadata(metadata);
 
       // Mint NFT on XRPL
-      const mintResult = await xrplService.mintNFT(company.wallet_seed, metadataUri);
+      const mintResult = await xrplService.mintNFT(userSeed, metadataUri);
 
       // Create sell offer
       let sellOffer = null;
       if (mintResult.tokenId) {
         sellOffer = await xrplService.createSellOffer(
-          company.wallet_seed,
+          userSeed,
           mintResult.tokenId,
           listPrice
         );
@@ -76,14 +81,14 @@ router.post('/company/:companyId/pool', async (req, res) => {
 
       // Store in database
       const nftResult = await pool.query(
-        `INSERT INTO nfts (token_id, company_id, asset_type, asset_name, asset_description,
+        `INSERT INTO nfts (token_id, creator_address, asset_type, asset_name, asset_description,
          metadata_uri, backing_xrp, list_price_xrp, last_sale_price_xrp, sale_count,
-         royalty_pool_id, royalty_percentage, status, owner_address, verification_tier)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+         royalty_pool_id, royalty_percentage, status, owner_address)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
          RETURNING *`,
         [
           mintResult.tokenId,
-          companyId,
+          walletAddress,
           'royalty',
           `${name} #${i + 1}`,
           `${percentage}% royalty share of ${name}`,
@@ -95,8 +100,7 @@ router.post('/company/:companyId/pool', async (req, res) => {
           royaltyPool.id,
           percentage,
           'listed',
-          company.wallet_address,
-          company.verification_tier,
+          walletAddress,
         ]
       );
 
@@ -104,7 +108,7 @@ router.post('/company/:companyId/pool', async (req, res) => {
       await pool.query(
         `INSERT INTO transactions (nft_id, tx_type, from_address, amount_xrp, tx_hash, status)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [nftResult.rows[0].id, 'mint', company.wallet_address, 0, mintResult.txHash, 'confirmed']
+        [nftResult.rows[0].id, 'mint', walletAddress, 0, mintResult.txHash, 'confirmed']
       );
 
       mintedNFTs.push({
@@ -129,9 +133,9 @@ router.post('/company/:companyId/pool', async (req, res) => {
 router.get('/pools', async (req, res) => {
   try {
     const result = await pool.query(
-      `SELECT rp.*, c.name as company_name
+      `SELECT rp.*, u.display_name as creator_name
        FROM royalty_pools rp
-       JOIN companies c ON rp.company_id = c.id
+       LEFT JOIN users u ON rp.creator_address = u.wallet_address
        ORDER BY rp.created_at DESC`
     );
     res.json({ pools: result.rows });
@@ -145,9 +149,9 @@ router.get('/pools', async (req, res) => {
 router.get('/pool/:poolId', async (req, res) => {
   try {
     const poolResult = await pool.query(
-      `SELECT rp.*, c.name as company_name, c.wallet_address as company_wallet
+      `SELECT rp.*, u.display_name as creator_name
        FROM royalty_pools rp
-       JOIN companies c ON rp.company_id = c.id
+       LEFT JOIN users u ON rp.creator_address = u.wallet_address
        WHERE rp.id = $1`,
       [req.params.poolId]
     );
@@ -173,7 +177,7 @@ router.get('/pool/:poolId', async (req, res) => {
     const holdersResult = await pool.query(
       `SELECT COUNT(DISTINCT owner_address) as cnt FROM nfts
        WHERE royalty_pool_id = $1 AND status IN ('owned', 'listed') AND owner_address != $2`,
-      [req.params.poolId, poolResult.rows[0].company_wallet]
+      [req.params.poolId, poolResult.rows[0].creator_address]
     );
 
     res.json({
@@ -191,11 +195,11 @@ router.get('/pool/:poolId', async (req, res) => {
 // ─── Distribute Royalty Income ───────────────────────────────────
 router.post('/pool/:poolId/distribute', async (req, res) => {
   try {
-    const { amountXrp, companySeed } = req.body;
+    const { amountXrp, walletAddress } = req.body;
     const poolId = req.params.poolId;
 
-    if (!amountXrp || !companySeed) {
-      return res.status(400).json({ error: 'Amount and company wallet seed required' });
+    if (!amountXrp || !walletAddress) {
+      return res.status(400).json({ error: 'Amount and wallet address required' });
     }
 
     const amount = parseFloat(amountXrp);
@@ -205,10 +209,7 @@ router.post('/pool/:poolId/distribute', async (req, res) => {
 
     // Get pool info
     const poolResult = await pool.query(
-      `SELECT rp.*, c.wallet_address as company_wallet
-       FROM royalty_pools rp
-       JOIN companies c ON rp.company_id = c.id
-       WHERE rp.id = $1`,
+      `SELECT * FROM royalty_pools WHERE id = $1`,
       [poolId]
     );
 
@@ -218,12 +219,27 @@ router.post('/pool/:poolId/distribute', async (req, res) => {
 
     const royaltyPool = poolResult.rows[0];
 
+    // Verify the caller is the pool creator
+    if (royaltyPool.creator_address !== walletAddress) {
+      return res.status(403).json({ error: 'You are not authorized to distribute for this pool' });
+    }
+
+    // Look up user's seed from users table
+    const userResult = await pool.query(
+      'SELECT wallet_seed FROM users WHERE wallet_address = $1',
+      [walletAddress]
+    );
+    if (userResult.rows.length === 0 || !userResult.rows[0].wallet_seed) {
+      return res.status(404).json({ error: 'Wallet not found' });
+    }
+    const userSeed = userResult.rows[0].wallet_seed;
+
     // Get all NFTs owned by someone OTHER than the creator
     const nftsResult = await pool.query(
       `SELECT id, owner_address, royalty_percentage FROM nfts
        WHERE royalty_pool_id = $1 AND status IN ('owned', 'listed')
        AND owner_address != $2`,
-      [poolId, royaltyPool.company_wallet]
+      [poolId, walletAddress]
     );
 
     if (nftsResult.rows.length === 0) {
@@ -235,7 +251,7 @@ router.post('/pool/:poolId/distribute', async (req, res) => {
       `INSERT INTO royalty_deposits (pool_id, depositor_address, amount_xrp, status)
        VALUES ($1, $2, $3, $4)
        RETURNING *`,
-      [poolId, royaltyPool.company_wallet, amount, 'distributing']
+      [poolId, walletAddress, amount, 'distributing']
     );
     const deposit = depositResult.rows[0];
 
@@ -265,9 +281,9 @@ router.post('/pool/:poolId/distribute', async (req, res) => {
       if (payoutAmount < 0.000001) continue; // Skip dust amounts
 
       try {
-        // Send XRP payment from company to holder
+        // Send XRP payment from creator to holder
         const paymentResult = await xrplService.sendPayment(
-          companySeed,
+          userSeed,
           holderAddress,
           payoutAmount
         );

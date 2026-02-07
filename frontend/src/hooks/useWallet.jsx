@@ -8,22 +8,12 @@ export function WalletProvider({ children }) {
     const saved = localStorage.getItem('dat_wallet');
     return saved ? JSON.parse(saved) : null;
   });
-  const [company, setCompany] = useState(() => {
-    const saved = localStorage.getItem('dat_company');
-    return saved ? JSON.parse(saved) : null;
-  });
   const [loading, setLoading] = useState(false);
 
   const saveWallet = (w) => {
     setWallet(w);
     if (w) localStorage.setItem('dat_wallet', JSON.stringify(w));
     else localStorage.removeItem('dat_wallet');
-  };
-
-  const saveCompany = (c) => {
-    setCompany(c);
-    if (c) localStorage.setItem('dat_company', JSON.stringify(c));
-    else localStorage.removeItem('dat_company');
   };
 
   const createNewWallet = useCallback(async (displayName) => {
@@ -42,7 +32,6 @@ export function WalletProvider({ children }) {
     try {
       const { data } = await api.loginWithSeed(seed);
       saveWallet({ address: data.address, seed, balance: data.balance });
-      if (data.company) saveCompany(data.company);
       return data;
     } finally {
       setLoading(false);
@@ -61,20 +50,17 @@ export function WalletProvider({ children }) {
 
   const logout = useCallback(() => {
     saveWallet(null);
-    saveCompany(null);
   }, []);
 
   return (
     <WalletContext.Provider
       value={{
         wallet,
-        company,
         loading,
         createNewWallet,
         loginWithSeed,
         refreshBalance,
         logout,
-        setCompany: saveCompany,
       }}
     >
       {children}

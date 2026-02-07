@@ -1,16 +1,7 @@
 import { Link } from 'react-router-dom';
-import { Shield, ShieldCheck, ShieldAlert, Zap } from 'lucide-react';
+import { Zap } from 'lucide-react';
 
-const tierConfig = {
-  unverified: { icon: ShieldAlert, color: 'text-surface-500', bg: 'bg-surface-700', label: 'Unverified' },
-  basic: { icon: Shield, color: 'text-blue-400', bg: 'bg-blue-900/30', label: 'Basic' },
-  verified: { icon: ShieldCheck, color: 'text-green-400', bg: 'bg-green-900/30', label: 'Verified' },
-  premium: { icon: ShieldCheck, color: 'text-amber-400', bg: 'bg-amber-900/30', label: 'Premium' },
-};
-
-export default function NFTCard({ nft, showBuy = false, showRelist = false }) {
-  const tier = tierConfig[nft.verification_tier] || tierConfig.unverified;
-  const TierIcon = tier.icon;
+export default function NFTCard({ nft }) {
   const isRoyalty = !!nft.royalty_pool_id || nft.asset_type === 'royalty';
   const displayValue = nft.last_sale_price_xrp > 0 ? nft.last_sale_price_xrp : nft.list_price_xrp;
 
@@ -29,12 +20,6 @@ export default function NFTCard({ nft, showBuy = false, showRelist = false }) {
               <p className="text-xs text-purple-400 mt-1 font-bold">{nft.royalty_percentage}% Royalty</p>
             )}
           </div>
-        </div>
-
-        {/* Verification Badge */}
-        <div className={`absolute top-3 right-3 flex items-center gap-1 ${tier.bg} px-2 py-1 rounded-full`}>
-          <TierIcon className={`w-3 h-3 ${tier.color}`} />
-          <span className={`text-[10px] font-medium ${tier.color}`}>{tier.label}</span>
         </div>
 
         {/* Status Badge */}
@@ -71,7 +56,7 @@ export default function NFTCard({ nft, showBuy = false, showRelist = false }) {
           {nft.asset_name}
         </h3>
         <p className="text-xs text-surface-500 mt-1 truncate">
-          by {nft.company_name || 'Unknown'}
+          by {nft.creator_name || (nft.creator_address ? `${nft.creator_address.slice(0, 8)}...` : 'Unknown')}
           {nft.royalty_pool_name && (
             <span className="text-purple-400"> &middot; {nft.royalty_pool_name}</span>
           )}

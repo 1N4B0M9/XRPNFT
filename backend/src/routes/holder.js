@@ -9,11 +9,11 @@ router.get('/:address/portfolio', async (req, res) => {
   try {
     const address = req.params.address;
 
-    // Get owned NFTs (with royalty pool info)
+    // Get owned NFTs (with royalty pool info and creator name)
     const nftsResult = await pool.query(
-      `SELECT n.*, c.name as company_name, rp.name as royalty_pool_name
+      `SELECT n.*, u.display_name as creator_name, rp.name as royalty_pool_name
        FROM nfts n
-       JOIN companies c ON n.company_id = c.id
+       LEFT JOIN users u ON n.creator_address = u.wallet_address
        LEFT JOIN royalty_pools rp ON n.royalty_pool_id = rp.id
        WHERE n.owner_address = $1 AND n.status IN ('owned', 'listed')
        ORDER BY n.created_at DESC`,

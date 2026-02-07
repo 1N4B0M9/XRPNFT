@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 import {
   Home,
-  Building2,
+  Plus,
   ShoppingBag,
   Wallet,
   Briefcase,
@@ -12,7 +12,7 @@ import {
 
 const navItems = [
   { path: '/', label: 'Home', icon: Home },
-  { path: '/company', label: 'Company', icon: Building2 },
+  { path: '/dashboard', label: 'Create', icon: Plus },
   { path: '/marketplace', label: 'Marketplace', icon: ShoppingBag },
   { path: '/portfolio', label: 'Portfolio', icon: Briefcase },
   { path: '/wallet', label: 'Wallet', icon: Wallet },
@@ -38,7 +38,7 @@ export default function Layout({ children }) {
                   Digital Asset Tartan
                 </span>
                 <span className="hidden sm:block text-[10px] text-surface-500 -mt-1">
-                  Asset-Backed NFTs on XRPL
+                  Tokenize Any Asset on XRPL
                 </span>
               </div>
             </Link>

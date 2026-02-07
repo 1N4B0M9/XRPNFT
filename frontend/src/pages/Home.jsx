@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Zap, Shield, ArrowRightLeft, TrendingUp, Building2, ShoppingBag, Briefcase } from 'lucide-react';
+import { Zap, Shield, ArrowRightLeft, TrendingUp, Plus, ShoppingBag, Briefcase } from 'lucide-react';
 import * as api from '../services/api';
 
 export default function Home() {
@@ -19,7 +19,7 @@ export default function Home() {
         </div>
         <h1 className="text-5xl sm:text-6xl font-extrabold tracking-tight">
           <span className="bg-gradient-to-r from-primary-400 via-accent-400 to-primary-400 bg-clip-text text-transparent">
-            Asset-Backed NFTs
+            Tokenize Any Asset
           </span>
           <br />
           <span className="text-white">Powered by XRP</span>
@@ -30,10 +30,10 @@ export default function Home() {
         </p>
         <div className="mt-10 flex flex-wrap items-center justify-center gap-4">
           <Link
-            to="/company"
+            to="/dashboard"
             className="px-8 py-3 bg-primary-600 hover:bg-primary-500 rounded-xl font-semibold transition-all hover:shadow-lg hover:shadow-primary-600/25"
           >
-            Mint NFTs
+            Start Creating
           </Link>
           <Link
             to="/marketplace"
@@ -48,7 +48,7 @@ export default function Home() {
       {stats && (
         <section className="grid grid-cols-2 sm:grid-cols-4 gap-4">
           {[
-            { label: 'Companies', value: stats.companies, color: 'text-blue-400' },
+            { label: 'Creators', value: stats.creators, color: 'text-blue-400' },
             { label: 'NFTs Minted', value: stats.nfts, color: 'text-purple-400' },
             { label: 'Transactions', value: stats.transactions, color: 'text-green-400' },
             { label: 'Trade Volume', value: `${stats.totalVolumeXrp?.toFixed(0) || 0} XRP`, color: 'text-amber-400' },
@@ -67,21 +67,21 @@ export default function Home() {
         <div className="grid md:grid-cols-3 gap-6">
           {[
             {
-              icon: Building2,
-              title: 'Creators Mint',
-              desc: 'Tokenize any digital asset as an NFT on XRPL. Set your price and list on the marketplace.',
+              icon: Plus,
+              title: 'Create & Mint',
+              desc: 'Connect your wallet and tokenize any digital asset as an NFT on XRPL. Set your price and list on the marketplace.',
               color: 'from-blue-600 to-blue-800',
             },
             {
               icon: ShoppingBag,
-              title: 'Buyers Purchase',
-              desc: 'Browse the marketplace and buy digital asset NFTs. XRP goes directly to the seller.',
+              title: 'Buy & Sell',
+              desc: 'Browse the marketplace and buy digital asset NFTs. XRP goes directly to the seller. Relist at any price.',
               color: 'from-purple-600 to-purple-800',
             },
             {
               icon: ArrowRightLeft,
-              title: 'Trade & Earn',
-              desc: 'Relist NFTs at any price. Earn royalty income from revenue-sharing NFT pools.',
+              title: 'Earn Royalties',
+              desc: 'Create royalty pools and distribute income to NFT holders. Transparent, on-chain revenue sharing.',
               color: 'from-green-600 to-green-800',
             },
           ].map(({ icon: Icon, title, desc, color }) => (

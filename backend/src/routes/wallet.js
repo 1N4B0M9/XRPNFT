@@ -49,22 +49,24 @@ router.post('/login', async (req, res) => {
     const wallet = xrplService.walletFromSeed(seed);
     const balance = await xrplService.getBalance(wallet.address);
 
-    // Check if this is a company wallet
-    const companyResult = await pool.query(
-      'SELECT id, name, verification_tier FROM companies WHERE wallet_address = $1',
-      [wallet.address]
-    );
-
     // Check user record
     const userResult = await pool.query(
       'SELECT * FROM users WHERE wallet_address = $1',
       [wallet.address]
     );
 
+    // If user doesn't exist yet, create a record
+    if (userResult.rows.length === 0) {
+      await pool.query(
+        `INSERT INTO users (wallet_address, wallet_seed, display_name)
+         VALUES ($1, $2, $3)`,
+        [wallet.address, seed, `User_${wallet.address.slice(-6)}`]
+      );
+    }
+
     res.json({
       address: wallet.address,
       balance,
-      company: companyResult.rows[0] || null,
       user: userResult.rows[0] || null,
     });
   } catch (err) {

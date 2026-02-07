@@ -2,11 +2,10 @@ import { useState, useEffect } from 'react';
 import { useWallet } from '../hooks/useWallet';
 import { useNavigate } from 'react-router-dom';
 import {
-  Building2,
+  Zap,
   Plus,
   Coins,
   Package,
-  ShieldCheck,
   RefreshCw,
   ChevronRight,
   AlertCircle,
@@ -16,15 +15,10 @@ import {
 import * as api from '../services/api';
 import NFTCard from '../components/NFTCard';
 import LoadingSpinner from '../components/LoadingSpinner';
-import StatusBadge from '../components/StatusBadge';
 
-export default function CompanyDashboard() {
-  const { wallet, company, setCompany } = useWallet();
+export default function Dashboard() {
+  const { wallet, refreshBalance } = useWallet();
   const navigate = useNavigate();
-
-  // Registration form
-  const [regName, setRegName] = useState('');
-  const [regDesc, setRegDesc] = useState('');
 
   // Minting form
   const [mintForm, setMintForm] = useState({
@@ -49,9 +43,9 @@ export default function CompanyDashboard() {
   const [distributeAmount, setDistributeAmount] = useState('');
 
   // State
-  const [companyData, setCompanyData] = useState(null);
-  const [companyNFTs, setCompanyNFTs] = useState([]);
+  const [myNFTs, setMyNFTs] = useState([]);
   const [royaltyPools, setRoyaltyPools] = useState([]);
+  const [balance, setBalance] = useState(null);
   const [loading, setLoading] = useState(false);
   const [minting, setMinting] = useState(false);
   const [creatingPool, setCreatingPool] = useState(false);
@@ -61,42 +55,26 @@ export default function CompanyDashboard() {
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
-    if (company?.id) loadCompanyData();
-  }, [company?.id]);
+    if (wallet?.address) loadCreatorData();
+  }, [wallet?.address]);
 
-  const loadCompanyData = async () => {
-    if (!company?.id) return;
-    try {
-      const [compRes, nftRes] = await Promise.all([
-        api.getCompany(company.id),
-        api.getCompanyNFTs(company.id),
-      ]);
-      setCompanyData(compRes.data.company);
-      setCompanyNFTs(nftRes.data.nfts);
-      setRoyaltyPools(compRes.data.royaltyPools || []);
-    } catch (err) {
-      console.error('Failed to load company data:', err);
-    }
-  };
-
-  const handleRegister = async () => {
-    if (!wallet) {
-      navigate('/wallet');
-      return;
-    }
-    if (!regName.trim()) {
-      setError('Company name is required');
-      return;
-    }
+  const loadCreatorData = async () => {
+    if (!wallet?.address) return;
     setLoading(true);
-    setError('');
     try {
-      const { data } = await api.registerCompany(regName.trim(), regDesc.trim());
-      setCompany(data.company);
-      setCompanyData(data.company);
-      setSuccess('Company registered successfully! Wallet funded with testnet XRP.');
+      const [nftRes, poolsRes, balRes] = await Promise.all([
+        api.getCreatorNFTs(wallet.address),
+        api.getRoyaltyPools(),
+        api.getBalance(wallet.address),
+      ]);
+      setMyNFTs(nftRes.data.nfts);
+      // Filter pools to only show ones created by this wallet
+      setRoyaltyPools(
+        poolsRes.data.pools.filter((p) => p.creator_address === wallet.address)
+      );
+      setBalance(balRes.data.balance);
     } catch (err) {
-      setError(err.response?.data?.error || 'Registration failed');
+      console.error('Failed to load creator data:', err);
     } finally {
       setLoading(false);
     }
@@ -107,15 +85,17 @@ export default function CompanyDashboard() {
     setError('');
     setSuccess('');
     try {
-      const { data } = await api.mintNFTs(company.id, {
-        assetName: mintForm.assetName || `${companyData?.name || 'Company'} Asset`,
+      const { data } = await api.mintNFTs({
+        walletAddress: wallet.address,
+        assetName: mintForm.assetName || 'My Asset',
         assetDescription: mintForm.assetDescription || 'Digital asset NFT',
         assetType: mintForm.assetType,
         listPriceXrp: parseFloat(mintForm.listPriceXrp),
         quantity: parseInt(mintForm.quantity),
       });
       setSuccess(data.message);
-      loadCompanyData();
+      loadCreatorData();
+      refreshBalance();
     } catch (err) {
       setError(err.response?.data?.error || 'Minting failed');
     } finally {
@@ -132,7 +112,8 @@ export default function CompanyDashboard() {
     setError('');
     setSuccess('');
     try {
-      const { data } = await api.createRoyaltyPool(company.id, {
+      const { data } = await api.createRoyaltyPool({
+        walletAddress: wallet.address,
         name: royaltyForm.name.trim(),
         description: royaltyForm.description.trim(),
         totalNfts: parseInt(royaltyForm.totalNfts),
@@ -140,7 +121,8 @@ export default function CompanyDashboard() {
         listPriceXrp: parseFloat(royaltyForm.listPriceXrp),
       });
       setSuccess(data.message);
-      loadCompanyData();
+      loadCreatorData();
+      refreshBalance();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to create royalty pool');
     } finally {
@@ -160,11 +142,12 @@ export default function CompanyDashboard() {
       const { data } = await api.distributeRoyalty(
         distributePoolId,
         parseFloat(distributeAmount),
-        companyData.wallet_seed || wallet.seed
+        wallet.address
       );
       setSuccess(data.message);
       setDistributeAmount('');
-      loadCompanyData();
+      loadCreatorData();
+      refreshBalance();
     } catch (err) {
       setError(err.response?.data?.error || 'Distribution failed');
     } finally {
@@ -175,9 +158,9 @@ export default function CompanyDashboard() {
   if (!wallet) {
     return (
       <div className="text-center py-16 animate-fade-in">
-        <Building2 className="w-16 h-16 text-surface-600 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold mb-2">Company Dashboard</h2>
-        <p className="text-surface-400 mb-6">Connect a wallet to register your company and start minting NFTs</p>
+        <Zap className="w-16 h-16 text-surface-600 mx-auto mb-4" />
+        <h2 className="text-2xl font-bold mb-2">Creator Dashboard</h2>
+        <p className="text-surface-400 mb-6">Connect a wallet to start minting NFTs and creating royalty pools</p>
         <button
           onClick={() => navigate('/wallet')}
           className="px-6 py-3 bg-primary-600 hover:bg-primary-500 rounded-xl font-semibold transition-colors"
@@ -188,100 +171,33 @@ export default function CompanyDashboard() {
     );
   }
 
-  // Not yet registered
-  if (!company) {
-    return (
-      <div className="max-w-lg mx-auto animate-fade-in">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold">Register Company</h1>
-          <p className="text-surface-400 mt-2">Set up your company to start minting digital asset NFTs</p>
-        </div>
-
-        <div className="bg-surface-900 border border-surface-800 rounded-2xl p-8 space-y-4">
-          <div>
-            <label className="block text-sm font-medium mb-2">Company Name *</label>
-            <input
-              type="text"
-              value={regName}
-              onChange={(e) => setRegName(e.target.value)}
-              placeholder="e.g., TechCorp"
-              className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium mb-2">Description</label>
-            <textarea
-              value={regDesc}
-              onChange={(e) => setRegDesc(e.target.value)}
-              placeholder="What does your company do?"
-              rows={3}
-              className="w-full bg-surface-800 border border-surface-700 rounded-xl px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 resize-none"
-            />
-          </div>
-
-          <button
-            onClick={handleRegister}
-            disabled={loading}
-            className="w-full py-3 bg-primary-600 hover:bg-primary-500 disabled:bg-surface-700 rounded-xl font-semibold transition-colors flex items-center justify-center gap-2"
-          >
-            {loading ? (
-              <>
-                <RefreshCw className="w-4 h-4 animate-spin" />
-                Registering on XRPL...
-              </>
-            ) : (
-              <>
-                <Building2 className="w-4 h-4" />
-                Register & Create Wallet
-              </>
-            )}
-          </button>
-
-          {error && (
-            <div className="p-3 bg-red-900/20 border border-red-800 rounded-xl text-sm text-red-400 flex items-start gap-2">
-              <AlertCircle className="w-4 h-4 mt-0.5 shrink-0" />
-              {error}
-            </div>
-          )}
-          {success && (
-            <div className="p-3 bg-green-900/20 border border-green-800 rounded-xl text-sm text-green-400">
-              {success}
-            </div>
-          )}
-        </div>
-      </div>
-    );
-  }
-
-  // Registered company dashboard
   return (
     <div className="animate-fade-in space-y-8">
-      {/* Company Header */}
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold flex items-center gap-3">
-            <Building2 className="w-8 h-8 text-primary-400" />
-            {companyData?.name || company.name}
+            <Zap className="w-8 h-8 text-primary-400" />
+            Creator Dashboard
           </h1>
-          <p className="text-surface-400 mt-1">{companyData?.description}</p>
+          <p className="text-surface-400 mt-1 font-mono text-sm">
+            {wallet.address.slice(0, 10)}...{wallet.address.slice(-6)}
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <StatusBadge status={companyData?.verification_tier || 'basic'} />
-          <button
-            onClick={loadCompanyData}
-            className="p-2 bg-surface-800 rounded-lg hover:bg-surface-700 transition-colors"
-          >
-            <RefreshCw className="w-4 h-4" />
-          </button>
-        </div>
+        <button
+          onClick={loadCreatorData}
+          className="p-2 bg-surface-800 rounded-lg hover:bg-surface-700 transition-colors self-start"
+        >
+          <RefreshCw className="w-4 h-4" />
+        </button>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {[
-          { label: 'Wallet Balance', value: `${parseFloat(companyData?.live_xrp_balance || 0).toFixed(1)} XRP`, icon: Coins, color: 'text-blue-400' },
-          { label: 'NFTs Minted', value: companyNFTs.length, icon: Package, color: 'text-purple-400' },
-          { label: 'Listed', value: companyNFTs.filter(n => n.status === 'listed').length, icon: ChevronRight, color: 'text-amber-400' },
+          { label: 'Wallet Balance', value: `${parseFloat(balance || wallet.balance || 0).toFixed(1)} XRP`, icon: Coins, color: 'text-blue-400' },
+          { label: 'NFTs Created', value: myNFTs.length, icon: Package, color: 'text-purple-400' },
+          { label: 'Listed', value: myNFTs.filter((n) => n.status === 'listed').length, icon: ChevronRight, color: 'text-amber-400' },
           { label: 'Royalty Pools', value: royaltyPools.length, icon: Music, color: 'text-green-400' },
         ].map(({ label, value, icon: Icon, color }) => (
           <div key={label} className="bg-surface-900 border border-surface-800 rounded-2xl p-5">
@@ -535,7 +451,7 @@ export default function CompanyDashboard() {
             Distribute Royalty Income
           </h2>
           <p className="text-surface-400 text-sm mb-6">
-            Send XRP from your company wallet to all current holders of a royalty pool,
+            Send XRP from your wallet to all current holders of a royalty pool,
             proportionally based on their ownership.
           </p>
 
@@ -616,13 +532,13 @@ export default function CompanyDashboard() {
         </div>
       )}
 
-      {/* Company NFTs */}
-      {companyNFTs.length > 0 && (
+      {/* My NFTs */}
+      {myNFTs.length > 0 && (
         <div>
-          <h2 className="text-xl font-bold mb-4">Your NFTs ({companyNFTs.length})</h2>
+          <h2 className="text-xl font-bold mb-4">Your NFTs ({myNFTs.length})</h2>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-            {companyNFTs.map((nft) => (
-              <NFTCard key={nft.id} nft={{ ...nft, company_name: companyData?.name }} />
+            {myNFTs.map((nft) => (
+              <NFTCard key={nft.id} nft={{ ...nft, creator_name: 'You' }} />
             ))}
           </div>
         </div>

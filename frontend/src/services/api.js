@@ -5,24 +5,12 @@ const api = axios.create({
   timeout: 120000, // XRPL operations can be slow
 });
 
-// ─── Company ─────────────────────────────────────────────────────
-export const registerCompany = (name, description) =>
-  api.post('/company/register', { name, description });
+// ─── Creator ────────────────────────────────────────────────────
+export const mintNFTs = (data) =>
+  api.post('/creator/mint', data);
 
-export const getCompany = (id) =>
-  api.get(`/company/${id}`);
-
-export const getCompanies = () =>
-  api.get('/company');
-
-export const mintNFTs = (companyId, data) =>
-  api.post(`/company/${companyId}/mint`, data);
-
-export const getCompanyNFTs = (companyId) =>
-  api.get(`/company/${companyId}/nfts`);
-
-export const updateVerification = (companyId, tier) =>
-  api.patch(`/company/${companyId}/verify`, { tier });
+export const getCreatorNFTs = (address) =>
+  api.get(`/creator/${address}/nfts`);
 
 // ─── Marketplace ─────────────────────────────────────────────────
 export const getMarketplaceNFTs = (params) =>
@@ -51,8 +39,8 @@ export const getRoyaltyEarnings = (address) =>
   api.get(`/holder/${address}/royalty-earnings`);
 
 // ─── Royalty ─────────────────────────────────────────────────────
-export const createRoyaltyPool = (companyId, data) =>
-  api.post(`/royalty/company/${companyId}/pool`, data);
+export const createRoyaltyPool = (data) =>
+  api.post('/royalty/pool', data);
 
 export const getRoyaltyPools = () =>
   api.get('/royalty/pools');
@@ -60,8 +48,8 @@ export const getRoyaltyPools = () =>
 export const getRoyaltyPool = (poolId) =>
   api.get(`/royalty/pool/${poolId}`);
 
-export const distributeRoyalty = (poolId, amountXrp, companySeed) =>
-  api.post(`/royalty/pool/${poolId}/distribute`, { amountXrp, companySeed });
+export const distributeRoyalty = (poolId, amountXrp, walletAddress) =>
+  api.post(`/royalty/pool/${poolId}/distribute`, { amountXrp, walletAddress });
 
 // ─── Wallet ──────────────────────────────────────────────────────
 export const createWallet = (displayName) =>

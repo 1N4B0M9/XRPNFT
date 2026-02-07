@@ -157,14 +157,12 @@ export async function mintNFT(issuerSeed, metadataUri, transferFee = 500) {
   const signed = wallet.sign(prepared);
   const result = await c.submitAndWait(signed.tx_blob);
 
-  // Extract the NFTokenID from the metadata
-  const nfts = await getAccountNFTs(wallet.address);
-  // The newest NFT should be the one we just minted
+  // Extract the NFTokenID from the transaction metadata
   const tokenId = extractNewTokenId(result.result.meta);
 
   return {
     txHash: result.result.hash,
-    tokenId: tokenId || (nfts.length > 0 ? nfts[nfts.length - 1].NFTokenID : null),
+    tokenId,
     issuer: wallet.address,
   };
 }
