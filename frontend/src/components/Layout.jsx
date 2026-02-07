@@ -1,5 +1,4 @@
-import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { useWallet } from '../hooks/useWallet';
 
 const isHome = (path) => path === '/';
@@ -8,7 +7,6 @@ import {
   Plus,
   ShoppingBag,
   Briefcase,
-  Search,
   CreditCard,
   LogOut,
 } from 'lucide-react';
@@ -23,18 +21,7 @@ const navItems = [
 
 export default function Layout({ children }) {
   const location = useLocation();
-  const navigate = useNavigate();
   const { wallet, logout } = useWallet();
-  const [search, setSearch] = useState('');
-
-  const handleSearch = (e) => {
-    e.preventDefault();
-    if (search.trim()) {
-      navigate(`/marketplace?q=${encodeURIComponent(search.trim())}`);
-    } else {
-      navigate('/marketplace');
-    }
-  };
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -44,21 +31,6 @@ export default function Layout({ children }) {
         <Link to="/" className="text-primary-200 text-2xl font-bold tracking-[-1px] shrink-0">
           BackedX
         </Link>
-
-        {/* Center search bar */}
-        <form
-          onSubmit={handleSearch}
-          className="flex flex-1 items-center max-w-[500px] mx-4 lg:mx-6 bg-white/8 rounded-[20px] pl-4 pr-4 py-2.5 border border-white/10"
-        >
-          <Search className="w-[18px] h-[18px] text-white/90 shrink-0" strokeWidth={2} />
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search marketplace..."
-            className="w-full bg-transparent border-0 outline-none text-white text-sm ml-2.5 placeholder:text-white/60"
-          />
-        </form>
 
         {/* Right side */}
         <div className="flex items-center shrink-0">

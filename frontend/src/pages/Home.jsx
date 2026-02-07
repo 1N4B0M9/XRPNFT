@@ -50,9 +50,9 @@ const SLIDES = [
     icon: Shield,
     title: 'Backed by XRP',
     desc: 'Every NFT can be backed by real XRP locked in escrow. The asset can never go to zero — burn it anytime to redeem the guaranteed floor value.',
-    accentColor: '#fbbf24',
-    iconGradient: 'from-amber-400 to-orange-500',
-    dotColor: 'bg-amber-400',
+    accentColor: '#ffc2ca',
+    iconGradient: 'from-primary-400 to-primary-600',
+    dotColor: 'bg-pink-300',
   },
   {
     icon: Music,
