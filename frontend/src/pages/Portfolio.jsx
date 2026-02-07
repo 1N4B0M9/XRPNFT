@@ -131,13 +131,13 @@ export default function Portfolio() {
             key={tab}
             type="button"
             onClick={() => setActiveTab(tab)}
-            className={`px-4 py-2.5 text-sm font-medium capitalize rounded-md transition-colors ${
+            className={`px-4 py-2.5 text-sm font-medium rounded-md transition-colors ${
               activeTab === tab
                 ? 'bg-primary-600/20 text-primary-400 border border-primary-500/40'
                 : 'text-surface-500 hover:text-white hover:bg-surface-800'
             }`}
           >
-            {tab}
+            {tab === 'nfts' ? 'NFTs' : tab}
           </button>
         ))}
       </div>

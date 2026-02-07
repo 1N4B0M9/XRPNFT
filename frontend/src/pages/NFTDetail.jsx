@@ -11,7 +11,6 @@ import {
   DollarSign,
   Settings2,
   ExternalLink,
-  FileText,
   Lock,
   Shield,
   Flame,
@@ -209,22 +208,47 @@ export default function NFTDetail() {
               </div>
             </div>
           </div>
+          {/* Royalty pool message under image (left column) */}
+          {isRoyaltyNFT && (
+            <div className="p-4 border-t border-surface-800 bg-purple-900/10 border-b border-l border-r border-surface-800 rounded-b-2xl border-t-purple-800/30">
+              <p className="text-xs text-purple-400 uppercase tracking-wider mb-1 font-semibold">Royalty Pool</p>
+              <p className="text-white font-medium">{nft.royalty_pool_name}</p>
+              <p className="text-sm text-surface-400 mt-0.5">
+                This NFT entitles the holder to <span className="text-purple-400 font-bold">{nft.royalty_percentage}%</span> of distributed royalty income.
+              </p>
+              {nft.pool_total_distributed > 0 && (
+                <p className="text-sm text-green-400 mt-1.5">
+                  Total distributed from pool: {parseFloat(nft.pool_total_distributed).toFixed(2)} XRP
+                </p>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right: Details */}
         <div className="space-y-6">
-          {/* Title */}
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <StatusBadge status={nft.status} />
-              {isRoyaltyNFT && (
-                <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-purple-900/40 text-purple-400">
-                  ROYALTY
-                </span>
-              )}
+          {/* Title row: name + author left, You own this NFT (compact) right */}
+            <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-3 mb-2">
+                <StatusBadge status={nft.status} />
+                {isRoyaltyNFT && (
+                  <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-purple-900/40 text-purple-400">
+                    ROYALTY
+                  </span>
+                )}
+              </div>
+              <h1 className="text-3xl font-bold">{nft.asset_name}</h1>
+              <p className="text-surface-400 mt-2">by {creatorLabel}</p>
             </div>
-            <h1 className="text-3xl font-bold">{nft.asset_name}</h1>
-            <p className="text-surface-400 mt-2">by {creatorLabel}</p>
+            {nft.owner_address && (
+              <div className="bg-surface-900 border border-surface-800 rounded-lg px-3 py-2 shrink-0">
+                <p className="text-[10px] text-surface-500 uppercase tracking-wider mb-0.5">
+                  {isOwner ? 'You Own This NFT' : 'Current Owner'}
+                </p>
+                <ExplorerLink type="account" value={nft.owner_address} className="text-xs" />
+              </div>
+            )}
           </div>
 
           {/* Description */}
@@ -288,81 +312,7 @@ export default function NFTDetail() {
             </div>
           </div>
 
-          {/* Royalty Pool Info */}
-          {isRoyaltyNFT && (
-            <div className="bg-purple-900/10 border border-purple-800/30 rounded-xl p-4">
-              <p className="text-xs text-purple-400 uppercase tracking-wider mb-2 font-semibold">Royalty Pool</p>
-              <p className="text-white font-medium">{nft.royalty_pool_name}</p>
-              <p className="text-sm text-surface-400 mt-1">
-                This NFT entitles the holder to <span className="text-purple-400 font-bold">{nft.royalty_percentage}%</span> of distributed royalty income.
-              </p>
-              {nft.pool_total_distributed > 0 && (
-                <p className="text-sm text-green-400 mt-2">
-                  Total distributed from pool: {parseFloat(nft.pool_total_distributed).toFixed(2)} XRP
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* Owner */}
-          {nft.owner_address && (
-            <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
-              <p className="text-xs text-surface-500 uppercase tracking-wider mb-1">
-                {isOwner ? 'You Own This NFT' : 'Current Owner'}
-              </p>
-              <ExplorerLink type="account" value={nft.owner_address} truncate={false} />
-            </div>
-          )}
-
-          {/* Game Properties */}
-          {hasProperties && (
-            <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
-              <p className="text-xs text-surface-500 uppercase tracking-wider mb-3 font-semibold flex items-center gap-1.5">
-                <Settings2 className="w-3.5 h-3.5" />
-                Game / App Properties
-              </p>
-              <div className="space-y-2">
-                {Object.entries(nftProperties).map(([key, value]) => (
-                  <div key={key} className="flex items-center justify-between bg-surface-800/60 rounded-lg px-3 py-2">
-                    <span className="text-sm text-surface-400 font-mono">{key}</span>
-                    <span className="text-sm font-medium text-white">{String(value)}</span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Content / IPFS Link */}
-          {nft.asset_image_url && (
-            <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
-              <p className="text-xs text-surface-500 uppercase tracking-wider mb-2 font-semibold flex items-center gap-1.5">
-                <FileText className="w-3.5 h-3.5" />
-                NFT Content
-              </p>
-              <a
-                href={imageUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm text-primary-400 hover:text-primary-300 transition-colors flex items-center gap-1.5 break-all"
-              >
-                <ExternalLink className="w-3.5 h-3.5 shrink-0" />
-                {nft.asset_image_url.startsWith('ipfs://') ? nft.asset_image_url : 'View Content File'}
-              </a>
-              {nft.metadata_uri && (
-                <a
-                  href={resolveUrl(nft.metadata_uri)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-surface-500 hover:text-surface-300 transition-colors flex items-center gap-1.5 mt-2 break-all"
-                >
-                  <ExternalLink className="w-3 h-3 shrink-0" />
-                  Metadata: {nft.metadata_uri.startsWith('ipfs://') ? nft.metadata_uri : 'View Metadata'}
-                </a>
-              )}
-            </div>
-          )}
-
-          {/* Actions */}
+          {/* Actions — directly under Token ID */}
           <div className="space-y-3">
             {canBuy && (
               <button
@@ -434,7 +384,6 @@ export default function NFTDetail() {
               </div>
             )}
 
-            {/* Burn & Redeem */}
             {canRedeem && !showRedeemConfirm && (
               <button
                 onClick={() => setShowRedeemConfirm(true)}
@@ -494,12 +443,30 @@ export default function NFTDetail() {
             )}
           </div>
 
+          {/* Game Properties */}
+          {hasProperties && (
+            <div className="bg-surface-900 border border-surface-800 rounded-xl p-4">
+              <p className="text-xs text-surface-500 uppercase tracking-wider mb-3 font-semibold flex items-center gap-1.5">
+                <Settings2 className="w-3.5 h-3.5" />
+                Game / App Properties
+              </p>
+              <div className="space-y-2">
+                {Object.entries(nftProperties).map(([key, value]) => (
+                  <div key={key} className="flex items-center justify-between bg-surface-800/60 rounded-lg px-3 py-2">
+                    <span className="text-sm text-surface-400 font-mono">{key}</span>
+                    <span className="text-sm font-medium text-white">{String(value)}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
         </div>
       </div>
 
       {/* Price History Chart */}
       {chartData.length > 0 && (
-        <div className="mt-12">
+        <div className="mt-8">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             <TrendingUp className="w-5 h-5 text-green-400" />
             Price History (On-Chain)
@@ -524,7 +491,7 @@ export default function NFTDetail() {
 
       {/* Royalty Payouts */}
       {royaltyPayouts.length > 0 && (
-        <div className="mt-12">
+        <div className="mt-8">
           <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
             <DollarSign className="w-5 h-5 text-purple-400" />
             Royalty Payouts for This NFT
@@ -564,7 +531,7 @@ export default function NFTDetail() {
 
       {/* Transaction History */}
       {transactions.length > 0 && (
-        <div className="mt-12">
+        <div className="mt-8">
           <h2 className="text-xl font-bold mb-4">Transaction History</h2>
           <div className="bg-surface-900 border border-surface-800 rounded-2xl overflow-hidden">
             <table className="w-full">
